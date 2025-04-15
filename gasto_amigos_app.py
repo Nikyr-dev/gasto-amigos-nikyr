@@ -2,101 +2,78 @@ import streamlit as st
 import pandas as pd
 import os
 import datetime
-import json
 
-st.set_page_config(page_title="Gasto Justo – By NIKY’R")
-
-# Título
+# Título con íconos
 st.markdown(
     """
-    <div style='text-align: center;'>
-        <h1 style='color: #ffc107; font-size: 40px; margin-top: 10px;'>
-            💸 Gasto Justo – <span style='color:#FF5252;'>By NIKY’R</span>
-        </h1>
-    </div>
+    <h1 style='text-align: center; color: #ffc107; font-size: 42px;'>
+        💸 Gasto Justo – <span style='color:#FF5252;'>By NIKY’R</span> 😢
+    </h1>
     """,
     unsafe_allow_html=True
 )
 
-# Participantes por defecto
+# Participantes fijos por ahora
 participantes = ["Rama", "Nacho", "Marce"]
 
+# Nombre del archivo CSV
 archivo = "gastos.csv"
 
-# Cargar gastos si existen
+# Cargar gastos desde el archivo si existe
 if os.path.exists(archivo):
     gastos_df = pd.read_csv(archivo)
-    gastos_df["participantes"] = gastos_df["participantes"].apply(json.loads)
 else:
-    gastos_df = pd.DataFrame(columns=["fecha", "descripcion", "monto", "pagador", "participantes"])
+    gastos_df = pd.DataFrame(columns=["fecha", "descripcion", "monto", "pagador"])
 
-# Registro de gasto
+# Formulario para agregar gasto
 st.subheader("Registrar nuevo gasto")
-
 descripcion = st.text_input("¿Qué se compró?")
 monto = st.number_input("¿Cuánto costó?", min_value=0.0, step=0.5)
 pagador = st.selectbox("¿Quién pagó?", participantes)
-involucrados = st.multiselect("¿Quiénes participaron?", participantes)
 fecha = st.date_input("Fecha del gasto", datetime.date.today())
 
 if st.button("Agregar gasto"):
-    if not involucrados:
-        st.warning("Seleccioná al menos una persona que participó del gasto.")
-    else:
-        nuevo = pd.DataFrame([{
-            "fecha": str(fecha),
-            "descripcion": descripcion,
-            "monto": monto,
-            "pagador": pagador,
-            "participantes": json.dumps(involucrados)
-        }])
-        gastos_df = pd.concat([gastos_df, nuevo], ignore_index=True)
-        gastos_df.to_csv(archivo, index=False)
-        st.success("✅ Gasto agregado correctamente.")
+    nuevo = pd.DataFrame([{
+        "fecha": fecha,
+        "descripcion": descripcion,
+        "monto": monto,
+        "pagador": pagador
+    }])
+    gastos_df = pd.concat([gastos_df, nuevo], ignore_index=True)
+    gastos_df.to_csv(archivo, index=False)
+    st.success("✅ Gasto guardado correctamente.")
 
-# Historial
+# Mostrar historial
 st.subheader("Historial de gastos")
 if not gastos_df.empty:
-    for _, row in gastos_df.iterrows():
-        lista = ", ".join(row["participantes"])
-        st.markdown(f"- {row['fecha']} | **{row['descripcion']}** | ${row['monto']} – pagó *{row['pagador']}* | participaron: _{lista}_")
+    for i, row in gastos_df.iterrows():
+        st.markdown(f"- {row['fecha']} | **{row['descripcion']}** | ${row['monto']} – pagó *{row['pagador']}*")
 else:
     st.info("No hay gastos registrados aún.")
 
 # Cálculo de balances
-st.subheader("Resumen en tiempo real 🧮")
+st.subheader("Resumen de la semana")
 if not gastos_df.empty:
-    balances = {p: 0 for p in participantes}
-    aportes = {p: 0 for p in participantes}
-    total = 0
+    total = gastos_df["monto"].sum()
+    promedio = total / len(participantes)
 
-    for _, row in gastos_df.iterrows():
-        monto = float(row["monto"])
-        pagador = row["pagador"]
-        involucrados = row["participantes"]
-        if isinstance(involucrados, str):
-            involucrados = json.loads(involucrados)
-        division = monto / len(involucrados)
-        total += monto
+    pagado_por = gastos_df.groupby("pagador")["monto"].sum().to_dict()
 
-        aportes[pagador] += monto
-        for persona in involucrados:
-            balances[persona] += division
+    st.markdown(f"**Total gastado:** ${total:.2f}")
+    st.markdown(f"**Cada uno debería haber puesto:** ${promedio:.2f}")
 
-    st.markdown(f"🧾 **Total gastado hasta hoy:** ${total:.2f}")
-
-    st.markdown("### 💸 Balance individual:")
-    for p in participantes:
-        diferencia = aportes[p] - balances[p]
+    for nombre in participantes:
+        pagado = pagado_por.get(nombre, 0)
+        diferencia = pagado - promedio
         if diferencia > 0:
-            st.success(f"✅ {p} puso ${diferencia:.2f} de más")
+            st.success(f"✅ {nombre} puso ${diferencia:.2f} de más")
         elif diferencia < 0:
-            st.warning(f"⚠️ {p} debe ${abs(diferencia):.2f}")
+            st.warning(f"⚠️ {nombre} debe ${abs(diferencia):.2f}")
         else:
-            st.info(f"{p} está justo")
+            st.info(f"{nombre} está justo")
 
-# Botón para reiniciar
+# Botón para reiniciar semana
 if st.button("🧹 Reiniciar semana"):
-    gastos_df = pd.DataFrame(columns=["fecha", "descripcion", "monto", "pagador", "participantes"])
+    gastos_df = pd.DataFrame(columns=["fecha", "descripcion", "monto", "pagador"])
     gastos_df.to_csv(archivo, index=False)
     st.success("Todos los gastos fueron borrados.")
