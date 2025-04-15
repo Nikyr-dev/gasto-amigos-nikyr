@@ -26,9 +26,9 @@ st.markdown("""
 
 participantes = ["Rama", "Nacho", "Marce"]
 
-# Conexión a Google Sheets
+# Conexión segura a Google Sheets usando secrets
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-credenciales = ServiceAccountCredentials.from_json_keyfile_name("credenciales.json", scope)
+credenciales = ServiceAccountCredentials.from_json_keyfile_dict(st.secrets["gspread"], scope)
 cliente = gspread.authorize(credenciales)
 hoja = cliente.open("Gasto Justo - By NIKY’R").sheet1
 
