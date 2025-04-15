@@ -6,19 +6,7 @@ import json
 
 st.set_page_config(page_title="Gasto Justo – By NIKY’R")
 
-# Fuente global: Verdana
-st.markdown(
-    """
-    <style>
-        * {
-            font-family: Verdana, sans-serif !important;
-        }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
-# Título con estilo
+# Título
 st.markdown(
     """
     <div style='text-align: center;'>
@@ -32,17 +20,17 @@ st.markdown(
 
 # Participantes por defecto
 participantes = ["Rama", "Nacho", "Marce"]
+
 archivo = "gastos.csv"
 
-# Cargar historial si existe
+# Cargar gastos si existen
 if os.path.exists(archivo):
     gastos_df = pd.read_csv(archivo)
-    if "participantes" in gastos_df.columns:
-        gastos_df["participantes"] = gastos_df["participantes"].apply(json.loads)
+    gastos_df["participantes"] = gastos_df["participantes"].apply(json.loads)
 else:
     gastos_df = pd.DataFrame(columns=["fecha", "descripcion", "monto", "pagador", "participantes"])
 
-# Registrar nuevo gasto
+# Registro de gasto
 st.subheader("Registrar nuevo gasto")
 
 descripcion = st.text_input("¿Qué se compró?")
@@ -66,17 +54,12 @@ if st.button("Agregar gasto"):
         gastos_df.to_csv(archivo, index=False)
         st.success("✅ Gasto agregado correctamente.")
 
-# Historial de gastos
+# Historial
 st.subheader("Historial de gastos")
 if not gastos_df.empty:
     for _, row in gastos_df.iterrows():
-        fecha_formateada = pd.to_datetime(row["fecha"]).strftime("%d-%b").lower()
-        if isinstance(row["participantes"], str):
-            participantes_data = json.loads(row["participantes"])
-        else:
-            participantes_data = row["participantes"]
-        participantes_str = ", ".join(participantes_data)
-        st.write(f"{fecha_formateada} | {row['descripcion']} | ${row['monto']} – pagó {row['pagador']} | participaron: {participantes_str}")
+        lista = ", ".join(row["participantes"])
+        st.markdown(f"- {row['fecha']} | **{row['descripcion']}** | ${row['monto']} – pagó *{row['pagador']}* | participaron: _{lista}_")
 else:
     st.info("No hay gastos registrados aún.")
 
@@ -112,7 +95,7 @@ if not gastos_df.empty:
         else:
             st.info(f"{p} está justo")
 
-# Reiniciar semana
+# Botón para reiniciar
 if st.button("🧹 Reiniciar semana"):
     gastos_df = pd.DataFrame(columns=["fecha", "descripcion", "monto", "pagador", "participantes"])
     gastos_df.to_csv(archivo, index=False)
