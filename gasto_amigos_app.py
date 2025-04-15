@@ -37,9 +37,11 @@ archivo = "gastos.csv"
 # Cargar historial si existe
 if os.path.exists(archivo):
     gastos_df = pd.read_csv(archivo)
-    gastos_df["participantes"] = gastos_df["participantes"].apply(json.loads)
+    if "participantes" in gastos_df.columns:
+        gastos_df["participantes"] = gastos_df["participantes"].apply(json.loads)
 else:
     gastos_df = pd.DataFrame(columns=["fecha", "descripcion", "monto", "pagador", "participantes"])
+
 
 # Registrar nuevo gasto
 st.subheader("Registrar nuevo gasto")
