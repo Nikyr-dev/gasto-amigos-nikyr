@@ -18,7 +18,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# Título con íconos
+# Título con estilo
 st.markdown(
     """
     <div style='text-align: center;'>
@@ -41,7 +41,6 @@ if os.path.exists(archivo):
         gastos_df["participantes"] = gastos_df["participantes"].apply(json.loads)
 else:
     gastos_df = pd.DataFrame(columns=["fecha", "descripcion", "monto", "pagador", "participantes"])
-
 
 # Registrar nuevo gasto
 st.subheader("Registrar nuevo gasto")
@@ -97,7 +96,7 @@ if not gastos_df.empty:
         for persona in involucrados:
             balances[persona] += division
 
-    st.markdown(f"🧾 **Total gastado hasta hoy:** ${total:.2f}")
+    st.markdown(f"📟 **Total gastado hasta hoy:** ${total:.2f}")
 
     st.markdown("### 💸 Balance individual:")
     for p in participantes:
@@ -110,7 +109,7 @@ if not gastos_df.empty:
             st.info(f"{p} está justo")
 
 # Reiniciar semana
-if st.button("🧹 Reiniciar semana"):
+if st.button("🪑 Reiniciar semana"):
     gastos_df = pd.DataFrame(columns=["fecha", "descripcion", "monto", "pagador", "participantes"])
     gastos_df.to_csv(archivo, index=False)
     st.success("Todos los gastos fueron borrados.")
