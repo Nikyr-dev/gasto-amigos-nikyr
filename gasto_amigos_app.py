@@ -1,4 +1,6 @@
 import streamlit as st
+import pandas as pd
+import os
 import datetime
 
 # Título con íconos
@@ -11,65 +13,51 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# Lista de participantes predefinidos
-participantes_default = ["Rama", "Nacho", "Marce"]
+# Participantes fijos por ahora
+participantes = ["Rama", "Nacho", "Marce"]
 
-# Estado inicial para guardar gastos
-if "gastos" not in st.session_state:
-    st.session_state.gastos = []
+# Nombre del archivo CSV
+archivo = "gastos.csv"
 
-# Registro de nuevo gasto
+# Cargar gastos desde el archivo si existe
+if os.path.exists(archivo):
+    gastos_df = pd.read_csv(archivo)
+else:
+    gastos_df = pd.DataFrame(columns=["fecha", "descripcion", "monto", "pagador"])
+
+# Formulario para agregar gasto
 st.subheader("Registrar nuevo gasto")
-
 descripcion = st.text_input("¿Qué se compró?")
 monto = st.number_input("¿Cuánto costó?", min_value=0.0, step=0.5)
-pagador = st.selectbox("¿Quién pagó?", participantes_default)
+pagador = st.selectbox("¿Quién pagó?", participantes)
 fecha = st.date_input("Fecha del gasto", datetime.date.today())
 
 if st.button("Agregar gasto"):
-    nuevo_gasto = {
+    nuevo = pd.DataFrame([{
+        "fecha": fecha,
         "descripcion": descripcion,
         "monto": monto,
-        "pagador": pagador,
-        "fecha": fecha
-    }
-    st.session_state.gastos.append(nuevo_gasto)
-    st.success("Gasto agregado correctamente")
+        "pagador": pagador
+    }])
+    gastos_df = pd.concat([gastos_df, nuevo], ignore_index=True)
+    gastos_df.to_csv(archivo, index=False)
+    st.success("✅ Gasto guardado correctamente.")
 
-# Mostrar historial de gastos
+# Mostrar historial
 st.subheader("Historial de gastos")
-if st.session_state.gastos:
-    for gasto in st.session_state.gastos:
-        st.markdown(f"- {gasto['fecha']} | **{gasto['descripcion']}** | ${gasto['monto']} – pagó *{gasto['pagador']}*")
+if not gastos_df.empty:
+    for i, row in gastos_df.iterrows():
+        st.markdown(f"- {row['fecha']} | **{row['descripcion']}** | ${row['monto']} – pagó *{row['pagador']}*")
 else:
-    st.info("Aún no se registraron gastos.")
+    st.info("No hay gastos registrados aún.")
 
-# Calcular balances
+# Cálculo de balances
 st.subheader("Resumen de la semana")
+if not gastos_df.empty:
+    total = gastos_df["monto"].sum()
+    promedio = total / len(participantes)
 
-if st.session_state.gastos:
-    total = sum(g["monto"] for g in st.session_state.gastos)
-    promedio = total / len(participantes_default)
+    pagado_por = gastos_df.groupby("pagador")["monto"].sum().to_dict()
 
-    # Calcular cuánto pagó cada uno
-    balances = {nombre: 0 for nombre in participantes_default}
-    for gasto in st.session_state.gastos:
-        balances[gasto["pagador"]] += gasto["monto"]
+    st.markdown(f"**Total gastado:**
 
-    st.markdown(f"**Total gastado:** ${total:.2f}")
-    st.markdown(f"**Cada uno debería haber puesto:** ${promedio:.2f}")
-
-    st.markdown("### Balance individual:")
-    for nombre in participantes_default:
-        diferencia = balances[nombre] - promedio
-        if diferencia > 0:
-            st.success(f"✅ {nombre} puso ${diferencia:.2f} de más")
-        elif diferencia < 0:
-            st.warning(f"⚠️ {nombre} debe ${abs(diferencia):.2f}")
-        else:
-            st.info(f"{nombre} está justo")
-
-# Reiniciar semana (opcional)
-if st.button("🧹 Reiniciar semana"):
-    st.session_state.gastos = []
-    st.success("Todos los gastos fueron reiniciados")
