@@ -59,4 +59,5 @@ if not gastos_df.empty:
 
     pagado_por = gastos_df.groupby("pagador")["monto"].sum().to_dict()
 
-    st.markdown(f"**Total gastado:**"
+    st.markdown(f"**Total gastado:**")
+
