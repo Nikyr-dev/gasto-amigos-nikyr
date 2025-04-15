@@ -71,7 +71,11 @@ st.subheader("Historial de gastos")
 if not gastos_df.empty:
     for _, row in gastos_df.iterrows():
         fecha_formateada = pd.to_datetime(row["fecha"]).strftime("%d-%b").lower()
-        participantes_str = ", ".join(row["participantes"])
+        if isinstance(row["participantes"], str):
+            participantes_data = json.loads(row["participantes"])
+        else:
+            participantes_data = row["participantes"]
+        participantes_str = ", ".join(participantes_data)
         st.write(f"{fecha_formateada} | {row['descripcion']} | ${row['monto']} – pagó {row['pagador']} | participaron: {participantes_str}")
 else:
     st.info("No hay gastos registrados aún.")
@@ -96,7 +100,7 @@ if not gastos_df.empty:
         for persona in involucrados:
             balances[persona] += division
 
-    st.markdown(f"📟 **Total gastado hasta hoy:** ${total:.2f}")
+    st.markdown(f"🧾 **Total gastado hasta hoy:** ${total:.2f}")
 
     st.markdown("### 💸 Balance individual:")
     for p in participantes:
@@ -109,7 +113,7 @@ if not gastos_df.empty:
             st.info(f"{p} está justo")
 
 # Reiniciar semana
-if st.button("🪑 Reiniciar semana"):
+if st.button("🧹 Reiniciar semana"):
     gastos_df = pd.DataFrame(columns=["fecha", "descripcion", "monto", "pagador", "participantes"])
     gastos_df.to_csv(archivo, index=False)
     st.success("Todos los gastos fueron borrados.")
