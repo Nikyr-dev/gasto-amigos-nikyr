@@ -7,7 +7,7 @@ import datetime
 st.markdown(
     """
     <h1 style='text-align: center; color: #ffc107; font-size: 42px;'>
-        💸 Gasto Justo – <span style='color:#FF5252;'>By NIKY’R</span> 😢
+        💸 Gasto Justo – <span style='color:#FF5252;'>
     </h1>
     """,
     unsafe_allow_html=True
@@ -51,13 +51,29 @@ if not gastos_df.empty:
 else:
     st.info("No hay gastos registrados aún.")
 
-# Cálculo de balances
-st.subheader("Resumen de la semana")
+# Cálculo de balances (actualizado)
+st.subheader("Resumen en tiempo real 🧮")
+
 if not gastos_df.empty:
     total = gastos_df["monto"].sum()
     promedio = total / len(participantes)
 
+    # Cuánto pagó cada uno
     pagado_por = gastos_df.groupby("pagador")["monto"].sum().to_dict()
 
-    st.markdown(f"**Total gastado:**")
+    st.markdown(f"🧾 **Total gastado hasta hoy:** ${total:.2f}")
+    st.markdown(f"💡 **Cada uno debería haber aportado:** ${promedio:.2f}")
 
+    st.markdown("### 💸 Balance individual:")
+    for nombre in participantes:
+        pagado = pagado_por.get(nombre, 0)
+        diferencia = pagado - promedio
+        if diferencia > 0:
+            st.success(f"✅ {nombre} puso ${diferencia:.2f} de más")
+        elif diferencia < 0:
+            st.warning(f"⚠️ {nombre} debe ${abs(diferencia):.2f}")
+        else:
+            st.info(f"{nombre} está justo")
+
+else:
+    st.info("Aún no hay gastos registrados para calcular balances.")
