@@ -10,7 +10,8 @@ import os
 
 # Configuración de conexión con Google Sheets
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-credenciales = json.loads(st.secrets["gspread"]["service_account"])
+credenciales = st.secrets["gspread"]
+
 credentials = ServiceAccountCredentials.from_json_keyfile_dict(credenciales, scope)
 cliente = gspread.authorize(credentials)
 hoja = cliente.open_by_key("1OXuFe8wp0WxrsidTJX75eWQ0TH9oUtZB1nbhenbZMY0").sheet1
