@@ -30,7 +30,7 @@ participantes = ["Rama", "Nacho", "Marce"]
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 credenciales = ServiceAccountCredentials.from_json_keyfile_dict(st.secrets["gspread"], scope)
 cliente = gspread.authorize(credenciales)
-hoja = cliente.open("Gasto Justo - By NIKY’R").sheet1
+hoja = cliente.open("Gasto_Justo_nikyr").sheet1
 
 # Leer los datos
 datos = hoja.get_all_records()
