@@ -34,12 +34,12 @@ st.markdown(
 st.subheader("Registrar nuevo gasto")
 descripcion = st.text_input("¿Qué se compró?")
 monto = st.number_input("¿Cuánto costó?", min_value=0.0, step=0.5)
-pagador = st.selectbox("¿Quién pagó?", participantes)
+pagadores = st.multiselect("¿Quién(es) pagaron?", participantes, default=[])
 involucrados = st.multiselect("¿Quiénes participaron?", participantes, default=participantes)
 fecha = st.date_input("Fecha del gasto", datetime.date.today())
 
 if st.button("Agregar gasto"):
-    nuevo_gasto = [str(fecha), descripcion, monto, pagador, json.dumps(involucrados)]
+    nuevo_gasto = [str(fecha), descripcion, monto, json.dumps(pagadores), json.dumps(involucrados)]
     hoja.append_row(nuevo_gasto)
     st.success("✅ Gasto guardado correctamente.")
 
@@ -65,7 +65,7 @@ if not df.empty:
     total = 0
 
     for _, row in df.iterrows():
-        pagador = row["pagador"]
+        pagadores = json.loads(row["pagador"]) if isinstance(row["pagador"], str) else [row["pagador"]]
         monto = row["monto"]
         personas = row["participantes"]
         if not personas:
@@ -73,7 +73,8 @@ if not df.empty:
         monto_individual = monto / len(personas)
         for persona in personas:
             balances[persona] -= monto_individual
-        balances[pagador] += monto
+        for p in pagadores: balances[p] += monto / len(pagadores)
+
         total += monto
 
     st.markdown(f"**Total gastado:** ${total:.2f}")
