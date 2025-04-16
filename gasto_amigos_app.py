@@ -5,93 +5,79 @@ import datetime
 import json
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+from PIL import Image
+import os
 
-# Conexión con Google Sheets
+# Configuración de conexión con Google Sheets
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-credenciales_dict = st.secrets["gspread"]
-credenciales = ServiceAccountCredentials.from_json_keyfile_dict(credenciales_dict, scope)
-cliente = gspread.authorize(credenciales)
-hoja = cliente.open_by_key("1OXuFe8wp0WxrsidTJX75eWQ0TH9oUtZB1nbhenbZMY0").sheet1  # Reemplazá por tu ID real
+credenciales = json.loads(st.secrets["gspread"]["service_account"])
+credentials = ServiceAccountCredentials.from_json_keyfile_dict(credenciales, scope)
+cliente = gspread.authorize(credentials)
+hoja = cliente.open_by_key("1OXuFe8wp0WxrsidTJX75eWQ0TH9oUtZB1nbhenbZMY0").sheet1
 
-# Cargar datos de la hoja
-datos = hoja.get_all_records()
-df = pd.DataFrame(datos)
+# Cargar datos desde Google Sheets
+data = hoja.get_all_records()
+gastos_df = pd.DataFrame(data)
 
-participantes = ["Rama", "Nacho", "Marce"]
+# Mostrar encabezado con imagen (logo estilo Simpsons)
+st.image("encabezado_gasto_justo.png", use_column_width=True)
 
-# Encabezado con logo
-st.markdown(
-    """
-    <div style='text-align: center;'>
-        <img src='https://raw.githubusercontent.com/Nikyr-dev/gasto-amigos-nikyr/main/logo_amigo_circular.png' width='100'><br>
-        <h1 style='color: #ffc107; font-size: 42px; font-family: Verdana;'>💸 Gasto Justo</h1>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
-
+# Formulario para registrar nuevo gasto
 st.subheader("Registrar nuevo gasto")
+participantes = ["Rama", "Nacho", "Marce"]
 descripcion = st.text_input("¿Qué se compró?")
 monto = st.number_input("¿Cuánto costó?", min_value=0.0, step=0.5)
-pagadores = st.multiselect("¿Quién(es) pagaron?", participantes, default=[])
+pagadores = st.multiselect("¿Quién pagó?", participantes)
 involucrados = st.multiselect("¿Quiénes participaron?", participantes, default=participantes)
 fecha = st.date_input("Fecha del gasto", datetime.date.today())
 
-if st.button("Agregar gasto") and pagadores:
-    nuevo_gasto = [str(fecha), descripcion, monto, json.dumps(pagadores), json.dumps(involucrados)]
-    hoja.append_row(nuevo_gasto)
+if st.button("Agregar gasto"):
+    nuevo = {
+        "fecha": fecha.strftime("%d-%b"),
+        "descripcion": descripcion,
+        "monto": monto,
+        "pagador": json.dumps(pagadores),
+        "participantes": json.dumps(involucrados)
+    }
+    hoja.append_row(list(nuevo.values()))
     st.success("✅ Gasto guardado correctamente.")
 
+# Mostrar historial
 st.subheader("Historial de gastos")
-if not df.empty:
-    for i, row in df.iterrows():
-        try:
-            personas = json.loads(row["participantes"])
-        except:
-            personas = []
-        st.markdown(
-            f"- {row['fecha']} | **{row['descripcion']}** | ${row['monto']} – "
-            f"pagó *{row['pagador']}* | Participaron: {', '.join(personas)}"
-        )
+if not gastos_df.empty:
+    for _, row in gastos_df.iterrows():
+        pagado_por = ', '.join(json.loads(row["pagador"])) if isinstance(row["pagador"], str) else row["pagador"]
+        st.markdown(f"- {row['fecha']} | **{row['descripcion']}** | ${row['monto']} – pagó *{pagado_por}*")
 else:
     st.info("No hay gastos registrados aún.")
 
+# Cálculo de balances
 st.subheader("Resumen de la semana")
-if not df.empty:
-    df["monto"] = pd.to_numeric(df["monto"], errors="coerce")
-    df["participantes"] = df["participantes"].apply(lambda x: json.loads(x) if isinstance(x, str) else [])
-    balances = {p: 0 for p in participantes}
-    total = 0
-
-    for _, row in df.iterrows():
-        try:
-            pagadores = json.loads(row["pagador"])
-            if isinstance(pagadores, str):
-                pagadores = [pagadores]
-        except:
-            pagadores = [row["pagador"]]
-
-        monto = row["monto"]
-        personas = row["participantes"]
-        if not personas:
-            continue
-        monto_individual = monto / len(personas)
-        for persona in personas:
-            balances[persona] -= monto_individual
-        for p in pagadores:
-            balances[p] += monto / len(pagadores)
-        total += monto
-
+if not gastos_df.empty:
+    total = gastos_df["monto"].sum()
     st.markdown(f"**Total gastado:** ${total:.2f}")
-    for persona, balance in balances.items():
-        if balance > 0:
-            st.success(f"✅ {persona} puso ${balance:.2f} de más")
-        elif balance < 0:
-            st.warning(f"⚠️ {persona} debe ${abs(balance):.2f}")
+    
+    saldos = {nombre: 0 for nombre in participantes}
+    for _, row in gastos_df.iterrows():
+        monto = float(row["monto"])
+        pagadores = json.loads(row["pagador"]) if isinstance(row["pagador"], str) else [row["pagador"]]
+        participantes_gasto = json.loads(row["participantes"]) if isinstance(row["participantes"], str) else [row["participantes"]]
+        
+        monto_por_persona = monto / len(participantes_gasto)
+        for persona in participantes_gasto:
+            saldos[persona] -= monto_por_persona
+        monto_por_pagador = monto / len(pagadores)
+        for pagador in pagadores:
+            saldos[pagador] += monto_por_pagador
+
+    for persona, saldo in saldos.items():
+        if saldo > 0:
+            st.success(f"{persona} tiene saldo a favor de ${saldo:.2f}")
+        elif saldo < 0:
+            st.warning(f"{persona} debe ${abs(saldo):.2f}")
         else:
             st.info(f"{persona} está justo")
 
+# Botón para reiniciar semana (solo visual, no borra en la hoja)
 if st.button("🧹 Reiniciar semana"):
-    hoja.clear()
-    hoja.append_row(["fecha", "descripcion", "monto", "pagador", "participantes"])
-    st.success("Todos los gastos fueron borrados.")
+    st.warning("Para reiniciar realmente, borra los datos manualmente en Google Sheets.")
