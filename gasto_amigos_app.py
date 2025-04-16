@@ -65,13 +65,19 @@ if not df.empty:
     total = 0
 
     for _, row in df.iterrows():
-        pagadores = json.loads(row["pagador"]) if isinstance(row["pagador"], str) else [row["pagador"]]
-        monto = row["monto"]
-        personas = row["participantes"]
-        if not personas:
+        # Manejo robusto de campo "pagador" (puede venir como texto plano o lista JSON)
+try:
+    pagadores = json.loads(row["pagador"])
+    if isinstance(pagadores, str):
+        pagadores = [pagadores]
+except:
+    pagadores = [row["pagador"]]
+    monto = row["monto"]
+    personas = row["participantes"]
+    if not personas:
             continue
         monto_individual = monto / len(personas)
-        for persona in personas:
+    for persona in personas:
             balances[persona] -= monto_individual
         for p in pagadores: balances[p] += monto / len(pagadores)
 
