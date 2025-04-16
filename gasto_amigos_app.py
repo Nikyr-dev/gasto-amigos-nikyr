@@ -11,7 +11,7 @@ scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/au
 credenciales_dict = st.secrets["gspread"]
 credenciales = ServiceAccountCredentials.from_json_keyfile_dict(credenciales_dict, scope)
 cliente = gspread.authorize(credenciales)
-hoja = cliente.open_by_key("TU_ID_DE_HOJA").sheet1  # Reemplazá por el ID real de tu hoja
+hoja = cliente.open_by_key("1OXuFe8wp0WxrsidTJX75eWQ0TH9oUtZB1nbhenbZMY0").sheet1  # Reemplazá por el ID real de tu hoja
 
 # Cargar datos de la hoja
 datos = hoja.get_all_records()
