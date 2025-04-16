@@ -6,38 +6,31 @@ import json
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
-st.set_page_config(page_title="Gasto Justo")
-
-# Fuente Verdana
-st.markdown('''
-<style>
-html, body, [class*="css"]  {
-    font-family: Verdana;
-}
-</style>
-''', unsafe_allow_html=True)
-
-# Título
-st.markdown("""
-<h1 style='text-align: center; color: #ffc107; font-size: 42px;'>
-    💸 Gasto Justo – <span style='color:#FF5252;'>By NIKY’R</span> 🧾
-</h1>
-""", unsafe_allow_html=True)
-
-participantes = ["Rama", "Nacho", "Marce"]
-
-# Conexión segura a Google Sheets usando secrets
+# Conexión con Google Sheets
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-credenciales = ServiceAccountCredentials.from_json_keyfile_dict(st.secrets["gspread"], scope)
+credenciales_dict = st.secrets["gspread"]
+credenciales = ServiceAccountCredentials.from_json_keyfile_dict(credenciales_dict, scope)
 cliente = gspread.authorize(credenciales)
-hoja = cliente.open_by_key("1OXuFe8wp0WxrsidTJX75eWQ0TH9oUtZB1nbhenbZMY0").sheet1   
+hoja = cliente.open_by_key("TU_ID_DE_HOJA").sheet1  # Reemplazá por el ID real de tu hoja
 
-
-# Leer los datos
+# Cargar datos de la hoja
 datos = hoja.get_all_records()
 df = pd.DataFrame(datos)
 
-# Formulario
+# Participantes predefinidos
+participantes = ["Rama", "Nacho", "Marce"]
+
+# Título con imagen personalizada
+st.markdown(
+    """
+    <div style='text-align: center;'>
+        <img src='https://raw.githubusercontent.com/Nikyr-dev/gasto-amigos-nikyr/main/logo_amigo_circular.png' width='100'><br>
+        <h1 style='color: #ffc107; font-size: 42px; font-family: Verdana;'>💸 Gasto Justo</h1>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
 st.subheader("Registrar nuevo gasto")
 descripcion = st.text_input("¿Qué se compró?")
 monto = st.number_input("¿Cuánto costó?", min_value=0.0, step=0.5)
@@ -46,45 +39,53 @@ involucrados = st.multiselect("¿Quiénes participaron?", participantes, default
 fecha = st.date_input("Fecha del gasto", datetime.date.today())
 
 if st.button("Agregar gasto"):
-    nueva_fila = [fecha.strftime("%d-%b"), descripcion, monto, pagador, json.dumps(involucrados)]
-    hoja.append_row(nueva_fila)
+    nuevo_gasto = [str(fecha), descripcion, monto, pagador, json.dumps(involucrados)]
+    hoja.append_row(nuevo_gasto)
     st.success("✅ Gasto guardado correctamente.")
 
-# Historial
 st.subheader("Historial de gastos")
 if not df.empty:
-    for _, row in df.iterrows():
+    for i, row in df.iterrows():
         try:
-            lista = json.loads(row["participantes"])
-            participantes_str = ", ".join(lista)
+            personas = json.loads(row["participantes"])
         except:
-            participantes_str = row["participantes"]
-        st.write(f"{row['fecha']} | {row['descripcion']} | ${row['monto']} – pagó {row['pagador']} | participaron: {participantes_str}")
+            personas = []
+        st.markdown(
+            f"- {row['fecha']} | **{row['descripcion']}** | ${row['monto']} – "
+            f"pagó *{row['pagador']}* | Participaron: {', '.join(personas)}"
+        )
 else:
     st.info("No hay gastos registrados aún.")
 
-# Balance
 st.subheader("Resumen de la semana")
 if not df.empty:
-    saldos = {nombre: 0 for nombre in participantes}
+    df["monto"] = pd.to_numeric(df["monto"], errors="coerce")
+    df["participantes"] = df["participantes"].apply(lambda x: json.loads(x) if isinstance(x, str) else [])
+    balances = {p: 0 for p in participantes}
+    total = 0
+
     for _, row in df.iterrows():
-        try:
-            lista = json.loads(row["participantes"])
-        except:
-            lista = participantes
-        monto = float(row["monto"])
-        division = monto / len(lista)
-        for persona in lista:
-            saldos[persona] -= division
-        saldos[row["pagador"]] += monto
+        pagador = row["pagador"]
+        monto = row["monto"]
+        personas = row["participantes"]
+        if not personas:
+            continue
+        monto_individual = monto / len(personas)
+        for persona in personas:
+            balances[persona] -= monto_individual
+        balances[pagador] += monto
+        total += monto
 
-    total = df["monto"].sum()
     st.markdown(f"**Total gastado:** ${total:.2f}")
-
-    for nombre, saldo in saldos.items():
-        if saldo > 0:
-            st.success(f"✅ {nombre} puso ${saldo:.2f} de más")
-        elif saldo < 0:
-            st.warning(f"⚠️ {nombre} debe ${abs(saldo):.2f}")
+    for persona, balance in balances.items():
+        if balance > 0:
+            st.success(f"✅ {persona} puso ${balance:.2f} de más")
+        elif balance < 0:
+            st.warning(f"⚠️ {persona} debe ${abs(balance):.2f}")
         else:
-            st.info(f"{nombre} está justo")
+            st.info(f"{persona} está justo")
+
+if st.button("🧹 Reiniciar semana"):
+    hoja.clear()
+    hoja.append_row(["fecha", "descripcion", "monto", "pagador", "participantes"])
+    st.success("Todos los gastos fueron borrados.")
