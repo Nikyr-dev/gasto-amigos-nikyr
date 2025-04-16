@@ -20,7 +20,7 @@ data = hoja.get_all_records()
 gastos_df = pd.DataFrame(data)
 
 # Mostrar encabezado con imagen (logo estilo Simpsons)
-st.image("encabezado_gasto_justo.png", use_column_width=True)
+st.image("simpsons_gasto_justo.png", use_column_width=True)
 
 # Formulario para registrar nuevo gasto
 st.subheader("Registrar nuevo gasto")
