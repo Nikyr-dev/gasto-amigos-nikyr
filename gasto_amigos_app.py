@@ -11,16 +11,15 @@ scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/au
 credenciales_dict = st.secrets["gspread"]
 credenciales = ServiceAccountCredentials.from_json_keyfile_dict(credenciales_dict, scope)
 cliente = gspread.authorize(credenciales)
-hoja = cliente.open_by_key("1OXuFe8wp0WxrsidTJX75eWQ0TH9oUtZB1nbhenbZMY0").sheet1  # Reemplazá por el ID real de tu hoja
+hoja = cliente.open_by_key("TU_ID_DE_HOJA").sheet1  # Reemplazá por tu ID real
 
 # Cargar datos de la hoja
 datos = hoja.get_all_records()
 df = pd.DataFrame(datos)
 
-# Participantes predefinidos
 participantes = ["Rama", "Nacho", "Marce"]
 
-# Título con imagen personalizada
+# Encabezado con logo
 st.markdown(
     """
     <div style='text-align: center;'>
@@ -38,7 +37,7 @@ pagadores = st.multiselect("¿Quién(es) pagaron?", participantes, default=[])
 involucrados = st.multiselect("¿Quiénes participaron?", participantes, default=participantes)
 fecha = st.date_input("Fecha del gasto", datetime.date.today())
 
-if st.button("Agregar gasto"):
+if st.button("Agregar gasto") and pagadores:
     nuevo_gasto = [str(fecha), descripcion, monto, json.dumps(pagadores), json.dumps(involucrados)]
     hoja.append_row(nuevo_gasto)
     st.success("✅ Gasto guardado correctamente.")
@@ -65,22 +64,22 @@ if not df.empty:
     total = 0
 
     for _, row in df.iterrows():
-        # Manejo robusto de campo "pagador" (puede venir como texto plano o lista JSON)
-try:
-    pagadores = json.loads(row["pagador"])
-    if isinstance(pagadores, str):
-        pagadores = [pagadores]
-except:
-    pagadores = [row["pagador"]]
-    monto = row["monto"]
-    personas = row["participantes"]
-    if not personas:
+        try:
+            pagadores = json.loads(row["pagador"])
+            if isinstance(pagadores, str):
+                pagadores = [pagadores]
+        except:
+            pagadores = [row["pagador"]]
+
+        monto = row["monto"]
+        personas = row["participantes"]
+        if not personas:
             continue
         monto_individual = monto / len(personas)
-    for persona in personas:
+        for persona in personas:
             balances[persona] -= monto_individual
-        for p in pagadores: balances[p] += monto / len(pagadores)
-
+        for p in pagadores:
+            balances[p] += monto / len(pagadores)
         total += monto
 
     st.markdown(f"**Total gastado:** ${total:.2f}")
