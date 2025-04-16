@@ -6,7 +6,7 @@ import json
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
-st.set_page_config(page_title="Gasto Justo – By NIKY’R")
+st.set_page_config(page_title="Gasto Justo")
 
 # Fuente Verdana
 st.markdown('''
