@@ -1,82 +1,100 @@
-# BLOQUE 1: Importaciones necesarias
+# --- BLOQUE 1: Importaciones necesarias ---
 import streamlit as st
 import pandas as pd
 import gspread
 from google.oauth2 import service_account
 
-st.set_page_config(page_title="Gasto Justo – By NIKY’R", page_icon="💸", layout="centered")
+st.set_page_config(page_title="Gasto Justo", page_icon="💸", layout="centered")
 
-# Fondo amarillo
+# --- BLOQUE 2: Fondo amarillo de la app ---
 st.markdown(
     """
     <style>
     body {
-        background-color: #FFF7D4;
+        background-color: #FFF9C4;
     }
     </style>
     """,
     unsafe_allow_html=True
 )
 
-# BLOQUE 2: Conexión con Google Sheets
+# --- BLOQUE 3: Conexión a Google Sheets ---
 try:
-    credentials = service_account.Credentials.from_service_account_info({
-        "type": st.secrets["gspread"]["type"],
-        "project_id": st.secrets["gspread"]["project_id"],
-        "private_key_id": st.secrets["gspread"]["private_key_id"],
-        "private_key": st.secrets["gspread"]["private_key"],
-        "client_email": st.secrets["gspread"]["client_email"],
-        "client_id": st.secrets["gspread"]["client_id"],
-        "auth_uri": st.secrets["gspread"]["auth_uri"],
-        "token_uri": st.secrets["gspread"]["token_uri"],
-        "auth_provider_x509_cert_url": st.secrets["gspread"]["auth_provider_x509_cert_url"],
-        "client_x509_cert_url": st.secrets["gspread"]["client_x509_cert_url"]
-    })
+    credentials = service_account.Credentials.from_service_account_info(
+        {
+            "type": st.secrets["gspread"]["type"],
+            "project_id": st.secrets["gspread"]["project_id"],
+            "private_key_id": st.secrets["gspread"]["private_key_id"],
+            "private_key": st.secrets["gspread"]["private_key"],
+            "client_email": st.secrets["gspread"]["client_email"],
+            "client_id": st.secrets["gspread"]["client_id"],
+            "auth_uri": st.secrets["gspread"]["auth_uri"],
+            "token_uri": st.secrets["gspread"]["token_uri"],
+            "auth_provider_x509_cert_url": st.secrets["gspread"]["auth_provider_x509_cert_url"],
+            "client_x509_cert_url": st.secrets["gspread"]["client_x509_cert_url"],
+            "universe_domain": st.secrets["gspread"]["universe_domain"]
+        },
+        scopes=[
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive"
+        ],
+    )
     gc = gspread.authorize(credentials)
-    sh = gc.open_by_key('1OXuFe8wp0WxrsidTJX75eWQ0TH9oUtZB1nbhenbZMY0')
+    sh = gc.open_by_key("1OXuFe8wp0WxrsidTJX75eWQ0TH9oUtZB1nbhenbZMY0")
     worksheet = sh.sheet1
-    datos = worksheet.get_all_records()
-    gastos_df = pd.DataFrame(datos)
+    data = worksheet.get_all_records()
+    df = pd.DataFrame(data)
+    connection_successful = True
 except Exception as e:
-    st.error(f"❌ Error de conexión con Google Sheets. Verificá tus credenciales y permisos.\n\nDetalles: {e}")
-    gastos_df = pd.DataFrame()
+    connection_successful = False
+    error_msg = str(e)
 
-# BLOQUE 3: Mostrar imagen de portada
-st.image("https://raw.githubusercontent.com/Nikyr-dev/gasto-amigos-nikyr/main/portada_gasto_justo.png", use_container_width=True)
+# --- BLOQUE 4: Encabezado principal ---
+st.image("https://raw.githubusercontent.com/Nikyr-dev/gasto-amigos-nikyr/main/encabezado_gasto_justo.png", use_container_width=True)
 
-# BLOQUE 4: Mostrar historial de gastos
-st.title("📋 Historial de Gastos")
-if not gastos_df.empty:
-    st.dataframe(gastos_df)
+# --- BLOQUE 5: Mostrar datos si hay conexión ---
+if connection_successful:
+    st.header("💸 Historial de Gastos")
+
+    if not df.empty:
+        # Mostrar historial
+        for i, row in df.iterrows():
+            participantes = row["participantes"].split(",") if isinstance(row["participantes"], str) else []
+            participantes_texto = ", ".join(participantes)
+            st.markdown(f"- {row['fecha']} | **{row['detalle']}** | ${row['monto']} – pagó *{row['pagador']}* | Participantes: {participantes_texto}")
+    else:
+        st.info("No hay gastos cargados todavía.")
+
+    # --- BLOQUE 6: Análisis de Deudas ---
+    st.header("📊 Análisis de Deudas")
+
+    if not df.empty:
+        personas = list(set(df["pagador"].unique().tolist() + sum(df["participantes"].apply(lambda x: x.split(",") if isinstance(x, str) else []), [])))
+        personas = list(filter(None, personas))  # Eliminar vacíos
+
+        saldos = {persona: 0 for persona in personas}
+
+        for _, row in df.iterrows():
+            monto = row["monto"]
+            pagador = row["pagador"]
+            participantes = row["participantes"].split(",") if isinstance(row["participantes"], str) else []
+
+            if participantes:
+                monto_por_persona = monto / len(participantes)
+                for participante in participantes:
+                    participante = participante.strip()
+                    if participante != pagador:
+                        saldos[participante] -= monto_por_persona
+                        saldos[pagador] += monto_por_persona
+
+        st.subheader("Resumen de saldos entre participantes:")
+        for persona, saldo in saldos.items():
+            if saldo > 0:
+                st.success(f"✅ {persona} debe recibir ${saldo:.2f}")
+            elif saldo < 0:
+                st.warning(f"⚠️ {persona} debe pagar ${abs(saldo):.2f}")
+            else:
+                st.info(f"{persona} está en equilibrio 💸")
 else:
-    st.warning("No hay gastos registrados todavía.")
-
-# BLOQUE 5: Cálculo de resumen y deudas
-st.title("💸 Resumen Final")
-
-if not gastos_df.empty:
-    participantes = ["Rama", "Nacho", "Marce"]
-    gastos_participantes = {p: 0 for p in participantes}
-
-    for _, row in gastos_df.iterrows():
-        for participante in participantes:
-            if participante in row['participantes']:
-                gastos_participantes[participante] += row['monto'] / len(row['participantes'])
-
-    total_gasto = sum(gastos_participantes.values())
-    promedio = total_gasto / len(participantes)
-
-    st.subheader(f"**Total gastado:** ${total_gasto:.2f}")
-    st.subheader(f"**Cada uno debería haber puesto:** ${promedio:.2f}")
-
-    for nombre in participantes:
-        diferencia = gastos_participantes[nombre] - promedio
-        if diferencia > 0:
-            st.success(f"✅ {nombre} puso ${diferencia:.2f} de más")
-        elif diferencia < 0:
-            st.warning(f"⚠️ {nombre} debe ${abs(diferencia):.2f}")
-        else:
-            st.info(f"🎯 {nombre} está justo")
-else:
-    st.info("Cargá gastos para ver el resumen.")
-
+    st.error("❌ Error de conexión con Google Sheets. Verificá tus credenciales y permisos.")
+    st.text(f"Detalles: {error_msg}")
