@@ -6,7 +6,6 @@ import datetime
 import json
 
 # Configuración de la página
-st.set_page_config(page_title="Gasto Justo – By NIKY'R", page_icon="💸", layout="centered")
 st.image("portada_gasto_justo.png", use_container_width=True)
 
 
