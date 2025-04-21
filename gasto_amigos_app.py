@@ -9,7 +9,7 @@ from PIL import Image
 st.set_page_config(page_title="Gasto Justo - By NIKY'R", layout="centered")
 
 # Cargar imagen de encabezado
-imagen = Image.open('gasto_justo_encabezado.png')
+imagen = Image.open('encabezado_gasto_justo.png')
 st.image(imagen, use_column_width=True)
 
 # Conexión a Google Sheets
