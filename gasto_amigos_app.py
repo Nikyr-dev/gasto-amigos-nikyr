@@ -10,7 +10,7 @@ st.set_page_config(page_title="Gasto Justo - By NIKY'R", layout="centered")
 
 # Cargar imagen de encabezado
 imagen = Image.open('encabezado_gasto_justo.png')
-st.image(imagen, use_column_width=True)
+st.image(imagen, use_container_width=True)
 
 # Conexión a Google Sheets
 SCOPE = ["https://www.googleapis.com/auth/spreadsheets"]
