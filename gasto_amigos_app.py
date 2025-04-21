@@ -1,13 +1,12 @@
 # BLOQUE 1: Importaciones necesarias
 import streamlit as st
 import pandas as pd
-import os
 import datetime
 import json
+import gspread
+from google.oauth2 import service_account
 
-# Configuración de la página
-st.image("portada_gasto_justo.png", use_container_width=True)
-
+st.set_page_config(page_title="Gasto Justo – By NIKY'R", page_icon="💸", layout="centered")
 
 # Fondo amarillo Positano
 st.markdown(
@@ -21,26 +20,26 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# BLOQUE 2: Datos iniciales
+# Mostrar la portada
+st.image("https://raw.githubusercontent.com/Nikyr-dev/gasto-justo/main/portada_gasto_justo.png", use_container_width=True)
+
+# Conectar con Google Sheets
+SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+credentials = service_account.Credentials.from_service_account_info(
+    st.secrets["gspread"], scopes=SCOPE
+)
+cliente = gspread.authorize(credentials)
+hoja = cliente.open_by_key("1OXuFe8wp0WxrsidTJX75eWQ0TH9oUtZB1nbhenbZMY0").sheet1
+
+# Leer datos desde Google Sheets
+datos = hoja.get_all_records()
+gastos_df = pd.DataFrame(datos)
+
+# Lista de participantes
 participantes = ["Rama", "Nacho", "Marce"]
 
-archivo = "gastos.csv"
-
-# Cargar gastos desde el archivo
-if os.path.exists(archivo):
-    gastos_df = pd.read_csv(archivo)
-else:
-    gastos_df = pd.DataFrame(columns=["fecha", "descripcion", "monto", "pagador", "participantes"])
-
 # BLOQUE 3: Menú lateral
-opcion = st.sidebar.radio(
-    "📋 Navegación",
-    [
-        "Registrar Movimiento",
-        "Historial de Gastos",
-        "Análisis de Deudas"
-    ]
-)
+opcion = st.sidebar.radio("📋 Navegación", ["Registrar Movimiento", "Historial de Gastos", "Análisis de Deudas"])
 
 # BLOQUE 4: Registrar Movimiento
 if opcion == "Registrar Movimiento":
@@ -53,17 +52,10 @@ if opcion == "Registrar Movimiento":
     quienes = st.multiselect("¿Quiénes participaron?", participantes, default=participantes)
 
     if st.button("Agregar gasto"):
-        nuevo = pd.DataFrame([{
-            "fecha": fecha.strftime("%Y-%m-%d"),
-            "descripcion": descripcion,
-            "monto": monto,
-            "pagador": pagador,
-            "participantes": json.dumps(quienes)
-        }])
-        gastos_df = pd.concat([gastos_df, nuevo], ignore_index=True)
-        gastos_df.to_csv(archivo, index=False)
+        nuevo = [fecha.strftime("%Y-%m-%d"), descripcion, monto, pagador, json.dumps(quienes)]
+        hoja.append_row(nuevo)
         st.success("✅ Gasto guardado correctamente.")
-        st.experimental_rerun()  # Actualiza automáticamente la página
+        st.experimental_rerun()
 
 # BLOQUE 5: Historial de Gastos
 elif opcion == "Historial de Gastos":
