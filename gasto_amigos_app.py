@@ -79,24 +79,24 @@ if st.session_state.gastos:
     gastos_df = pd.DataFrame(st.session_state.gastos)
     st.dataframe(gastos_df)
 
+
 # Calcular balances
 st.header("Balance")
 
 total_gastado = 0
+gastos_por_persona = {}
 balance_individual = {}
-total_por_persona = {}
 
 for gasto in st.session_state.gastos:
     monto = gasto['monto']
     participantes = gasto['participantes']
     pagador = gasto['pagador']
 
-    # Inicializar el pagador en total_por_persona
-    if pagador not in total_por_persona:
-        total_por_persona[pagador] = 0
-    total_por_persona[pagador] += monto
-
     total_gastado += monto
+
+    if pagador not in gastos_por_persona:
+        gastos_por_persona[pagador] = 0
+    gastos_por_persona[pagador] += monto
 
     monto_por_participante = monto / len(participantes)
 
@@ -109,9 +109,39 @@ for gasto in st.session_state.gastos:
         balance_individual[pagador] = 0
     balance_individual[pagador] += monto
 
-st.subheader("Total gastado hasta ahora:")
-st.write(f"${total_gastado:.2f}")
+# Preparar DataFrame
+datos_balance = []
 
-st.subheader("Saldos individuales:")
-for persona, saldo in balance_individual.items():
-    st.write(f"{persona}: ${saldo:.2f}")
+for persona in sorted(set(list(gastos_por_persona.keys()) + list(balance_individual.keys()))):
+    gasto_total = gastos_por_persona.get(persona, 0)
+    saldo = balance_individual.get(persona, 0)
+    datos_balance.append({
+        "Persona": persona,
+        "Gastó en total": round(gasto_total, 2),
+        "Saldo final": round(saldo, 2),
+        "Situación": "Debe" if saldo < 0 else "A favor"
+    })
+
+df_balance = pd.DataFrame(datos_balance)
+
+st.subheader("Resumen de gastos y saldos:")
+st.dataframe(df_balance)
+
+# Calcular deudas específicas (quién le debe a quién)
+st.subheader("Deudas entre personas:")
+
+deudores = {p: s for p, s in balance_individual.items() if s < 0}
+acreedores = {p: s for p, s in balance_individual.items() if s > 0}
+
+for deudor, deuda in deudores.items():
+    deuda_restante = -deuda
+    for acreedor, credito in acreedores.items():
+        if credito == 0:
+            continue
+        pago = min(deuda_restante, credito)
+        if pago > 0:
+            st.write(f"👉 {deudor} le debe ${pago:.2f} a {acreedor}")
+            deuda_restante -= pago
+            acreedores[acreedor] -= pago
+        if deuda_restante == 0:
+            break
