@@ -21,7 +21,7 @@ st.markdown(
 )
 
 # Mostrar la portada
-st.image("https://raw.githubusercontent.com/Nikyr-dev/gasto-justo/main/portada_gasto_justo.png", use_container_width=True)
+st.image("https://raw.githubusercontent.com/Nikyr-dev/gasto-justo/main/encabezado_gasto_justo.png", use_container_width=True)
 
 # Conectar con Google Sheets
 SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
