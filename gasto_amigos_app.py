@@ -4,13 +4,17 @@ import datetime
 import gspread
 from google.oauth2 import service_account
 from PIL import Image
+import os
 
 # Configuración de página
 st.set_page_config(page_title="Gasto Justo - By NIKY'R", layout="centered")
 
 # Cargar imagen de encabezado
-imagen = Image.open('encabezado_gasto_justo.png')
-st.image(imagen, use_container_width=True)
+if os.path.exists('encabezado_gasto_justo.png'):
+    imagen = Image.open('encabezado_gasto_justo.png')
+    st.image(imagen, use_container_width=True)
+else:
+    st.warning("No se encontró la imagen de encabezado.")
 
 # Conexión a Google Sheets
 SCOPE = ["https://www.googleapis.com/auth/spreadsheets"]
@@ -62,7 +66,6 @@ if submit_button:
     }
     st.session_state.gastos.append(nuevo_gasto)
 
-    # Actualizar Google Sheets
     nueva_fila = [
         descripcion,
         monto,
@@ -79,9 +82,11 @@ if st.session_state.gastos:
     gastos_df = pd.DataFrame(st.session_state.gastos)
     st.dataframe(gastos_df)
 
-
 # Calcular balances
 st.header("Balance")
+
+def limpiar_nombre(nombre):
+    return nombre.strip().replace('[', '').replace(']', '').replace('"', '').replace("'", '')
 
 total_gastado = 0
 gastos_por_persona = {}
@@ -89,8 +94,8 @@ balance_individual = {}
 
 for gasto in st.session_state.gastos:
     monto = gasto['monto']
-    participantes = gasto['participantes']
-    pagador = gasto['pagador']
+    participantes = [limpiar_nombre(p) for p in gasto['participantes']]
+    pagador = limpiar_nombre(gasto['pagador'])
 
     total_gastado += monto
 
@@ -109,9 +114,10 @@ for gasto in st.session_state.gastos:
         balance_individual[pagador] = 0
     balance_individual[pagador] += monto
 
-# Preparar DataFrame
-datos_balance = []
+# Mostrar resumen
+st.subheader("Resumen de gastos y saldos:")
 
+datos_balance = []
 for persona in sorted(set(list(gastos_por_persona.keys()) + list(balance_individual.keys()))):
     gasto_total = gastos_por_persona.get(persona, 0)
     saldo = balance_individual.get(persona, 0)
@@ -123,15 +129,15 @@ for persona in sorted(set(list(gastos_por_persona.keys()) + list(balance_individ
     })
 
 df_balance = pd.DataFrame(datos_balance)
-
-st.subheader("Resumen de gastos y saldos:")
 st.dataframe(df_balance)
 
-# Calcular deudas específicas (quién le debe a quién)
+# Calcular deudas acumuladas entre personas
 st.subheader("Deudas entre personas:")
 
 deudores = {p: s for p, s in balance_individual.items() if s < 0}
 acreedores = {p: s for p, s in balance_individual.items() if s > 0}
+
+deudas_totales = {}
 
 for deudor, deuda in deudores.items():
     deuda_restante = -deuda
@@ -140,8 +146,14 @@ for deudor, deuda in deudores.items():
             continue
         pago = min(deuda_restante, credito)
         if pago > 0:
-            st.write(f"👉 {deudor} le debe ${pago:.2f} a {acreedor}")
+            clave = (deudor, acreedor)
+            if clave not in deudas_totales:
+                deudas_totales[clave] = 0
+            deudas_totales[clave] += pago
             deuda_restante -= pago
             acreedores[acreedor] -= pago
         if deuda_restante == 0:
             break
+
+for (deudor, acreedor), monto in deudas_totales.items():
+    st.write(f"👉 {deudor} le debe ${monto:.2f} a {acreedor}")
