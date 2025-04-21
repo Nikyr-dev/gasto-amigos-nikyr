@@ -1,74 +1,78 @@
 import streamlit as st
 import pandas as pd
-import gspread
-from google.oauth2 import service_account
+import datetime
 
-# Configurar página
-st.set_page_config(page_title="Gasto Justo", page_icon="💸", layout="centered")
+st.set_page_config(page_title="Gasto Justo - By NIKY'R", layout="centered")
+st.title("Gasto Justo - By NIKY'R")
 
-# Fondo
-st.markdown(
-    """
-    <style>
-    body {
-        background-color: #FFF5E1;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
+# Inicializar datos
+if 'gastos' not in st.session_state:
+    st.session_state.gastos = []
 
-# Portada
-st.image("https://raw.githubusercontent.com/Nikyr-dev/gasto-amigos-nikyr/main/portada_gasto_justo.png", use_container_width=True)
+# Formulario para registrar gastos
+st.header("Registrar nuevo gasto")
+with st.form(key='nuevo_gasto'):
+    descripcion = st.text_input("Descripción")
+    monto = st.number_input("Monto", min_value=0.0, format="%.2f")
+    pagador = st.text_input("Pagador")
+    participantes = st.text_input("Participantes (separados por coma)")
+    fecha = st.date_input("Fecha", value=datetime.date.today())
+    submit_button = st.form_submit_button(label='Agregar gasto')
 
-# Conectar a Google Sheets
-try:
-    credentials = service_account.Credentials.from_service_account_info(
-        st.secrets["gspread"],
-        scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-    )
-    gc = gspread.authorize(credentials)
-    sh = gc.open_by_key("1OXuFe8wp0WxrsidTJX75eWQ0TH9oUtZB1nbhenbZMY0")
-    worksheet = sh.sheet1
-    datos = worksheet.get_all_records()
-    df = pd.DataFrame(datos)
-except Exception as e:
-    st.error(f"❌ Error de conexión con Google Sheets. Verificá tus credenciales y permisos.\n\nDetalles: {e}")
-    st.stop()
+if submit_button:
+    participantes_lista = [p.strip() for p in participantes.split(',')]
+    st.session_state.gastos.append({
+        'descripcion': descripcion,
+        'monto': monto,
+        'pagador': pagador,
+        'participantes': participantes_lista,
+        'fecha': fecha
+    })
+    st.success("Gasto agregado exitosamente")
 
-# Participantes
-participantes = ["Rama", "Nacho", "Marce"]
+# Mostrar historial de gastos
+st.header("Historial de gastos")
+if st.session_state.gastos:
+    gastos_df = pd.DataFrame(st.session_state.gastos)
+    st.dataframe(gastos_df)
 
-# Mostrar historial
-st.header("Historial de Gastos")
-if df.empty:
-    st.info("No hay gastos registrados aún.")
-else:
-    for i, row in df.iterrows():
-        participantes_texto = ', '.join(eval(row['participantes'])) if isinstance(row['participantes'], str) else ''
-        st.markdown(f"- {row['fecha']} | **{row['detalle']}** | ${row['monto']} – pagó *{row['pagador']}* | Participantes: {participantes_texto}")
+# Calcular deudas
+st.header("Balance")
 
-# Cálculo de balances
-st.header("Saldos por persona")
-if not df.empty:
-    total_por_persona = {p: 0 for p in participantes}
-    for i, row in df.iterrows():
-        monto = row['monto']
-        pagador = row['pagador']
-        participantes_gasto = eval(row['participantes']) if isinstance(row['participantes'], str) else []
-        
-        if participantes_gasto:
-            parte = monto / len(participantes_gasto)
-            for p in participantes_gasto:
-                total_por_persona[p] -= parte
-            total_por_persona[pagador] += monto
-    
-    for persona, saldo in total_por_persona.items():
-        if saldo > 0:
-            st.success(f"✅ {persona} tiene saldo a favor de ${saldo:.2f}")
-        elif saldo < 0:
-            st.warning(f"⚠️ {persona} debe ${-saldo:.2f}")
-        else:
-            st.info(f"🔵 {persona} está en equilibrio.")
+# Inicializar los totales
+total_gastado = 0
+balance_individual = {}
+total_por_persona = {}
 
-# Fin del archivo
+gastos = st.session_state.gastos
+
+for gasto in gastos:
+    monto = gasto['monto']
+    participantes = gasto['participantes']
+    pagador = gasto['pagador']
+    total_gastado += monto
+
+    # Inicializar si no existe el pagador
+    if pagador not in total_por_persona:
+        total_por_persona[pagador] = 0
+    total_por_persona[pagador] += monto
+
+    # Calcular cuánto debería pagar cada participante
+    monto_por_participante = monto / len(participantes)
+
+    for participante in participantes:
+        if participante not in balance_individual:
+            balance_individual[participante] = 0
+        balance_individual[participante] -= monto_por_participante
+
+    # El pagador recupera el total del gasto
+    if pagador not in balance_individual:
+        balance_individual[pagador] = 0
+    balance_individual[pagador] += monto
+
+st.subheader("Total gastado hasta ahora:")
+st.write(f"${total_gastado:.2f}")
+
+st.subheader("Saldos individuales:")
+for persona, saldo in balance_individual.items():
+    st.write(f"{persona}: ${saldo:.2f}")
