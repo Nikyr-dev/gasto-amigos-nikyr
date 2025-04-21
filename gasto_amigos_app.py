@@ -25,16 +25,16 @@ st.image("https://raw.githubusercontent.com/Nikyr-dev/gasto-amigos-nikyr/main/po
 # BLOQUE 2: Conexión a Google Sheets
 credentials = service_account.Credentials.from_service_account_info(
     {
-        "type": st.secrets["type"],
-        "project_id": st.secrets["project_id"],
-        "private_key_id": st.secrets["private_key_id"],
-        "private_key": st.secrets["private_key"].replace("\\n", "\n"),
-        "client_email": st.secrets["client_email"],
-        "client_id": st.secrets["client_id"],
-        "auth_uri": st.secrets["auth_uri"],
-        "token_uri": st.secrets["token_uri"],
-        "auth_provider_x509_cert_url": st.secrets["auth_provider_x509_cert_url"],
-        "client_x509_cert_url": st.secrets["client_x509_cert_url"],
+        "type": st.secrets["gspread"]["type"],
+        "project_id": st.secrets["gspread"]["project_id"],
+        "private_key_id": st.secrets["gspread"]["private_key_id"],
+        "private_key": st.secrets["gspread"]["private_key"].replace("\\n", "\n"),
+        "client_email": st.secrets["gspread"]["client_email"],
+        "client_id": st.secrets["gspread"]["client_id"],
+        "auth_uri": st.secrets["gspread"]["auth_uri"],
+        "token_uri": st.secrets["gspread"]["token_uri"],
+        "auth_provider_x509_cert_url": st.secrets["gspread"]["auth_provider_x509_cert_url"],
+        "client_x509_cert_url": st.secrets["gspread"]["client_x509_cert_url"],
     }
 )
 gc = gspread.authorize(credentials)
@@ -59,7 +59,6 @@ else:
 # BLOQUE 4: Análisis de Deudas
 st.header("💸 Balance y Deudas")
 if not df.empty:
-    # Calcular deudas
     saldo_individual = {nombre: 0 for nombre in ["Rama", "Nacho", "Marce"]}
 
     for i, row in df.iterrows():
@@ -73,7 +72,6 @@ if not df.empty:
                 saldo_individual[persona] -= monto_individual
                 saldo_individual[pagador] += monto_individual
 
-    # Mostrar resultados
     for nombre, saldo in saldo_individual.items():
         if saldo > 0:
             st.success(f"✅ {nombre} tiene saldo a favor de ${saldo:.2f}")
