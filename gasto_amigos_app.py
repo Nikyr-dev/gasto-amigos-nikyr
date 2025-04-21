@@ -1,31 +1,24 @@
-# --- BLOQUE 1: Importaciones necesarias ---
+# BLOQUE 1: Importaciones necesarias
 import streamlit as st
 import pandas as pd
 import gspread
 from google.oauth2 import service_account
 
-# Configuración de la página
-st.set_page_config(page_title="Gasto Justo", page_icon="💸", layout="centered")
+st.set_page_config(page_title="Gasto Justo – By NIKY’R", page_icon="💸", layout="centered")
 
-# Fondo amarillo Positano
+# Fondo amarillo
 st.markdown(
     """
     <style>
     body {
-        background-color: #FFD93D;
+        background-color: #FFF7D4;
     }
     </style>
     """,
     unsafe_allow_html=True
 )
 
-# --- BLOQUE 2: Cargar imagen de portada ---
-st.image(
-    "https://raw.githubusercontent.com/Nikyr-dev/gasto-amigos-nikyr/main/encabezado_gasto_justo.png",
-    use_container_width=True
-)
-
-# --- BLOQUE 3: Conexión con Google Sheets ---
+# BLOQUE 2: Conexión con Google Sheets
 try:
     credentials = service_account.Credentials.from_service_account_info({
         "type": st.secrets["gspread"]["type"],
@@ -37,76 +30,53 @@ try:
         "auth_uri": st.secrets["gspread"]["auth_uri"],
         "token_uri": st.secrets["gspread"]["token_uri"],
         "auth_provider_x509_cert_url": st.secrets["gspread"]["auth_provider_x509_cert_url"],
-        "client_x509_cert_url": st.secrets["gspread"]["client_x509_cert_url"],
-        "universe_domain": st.secrets["gspread"]["universe_domain"],
+        "client_x509_cert_url": st.secrets["gspread"]["client_x509_cert_url"]
     })
-
     gc = gspread.authorize(credentials)
     sh = gc.open_by_key('1OXuFe8wp0WxrsidTJX75eWQ0TH9oUtZB1nbhenbZMY0')
     worksheet = sh.sheet1
-    records = worksheet.get_all_records()
-    df = pd.DataFrame(records)
-
+    datos = worksheet.get_all_records()
+    gastos_df = pd.DataFrame(datos)
 except Exception as e:
-    st.error("❌ Error de conexión con Google Sheets. Verificá tus credenciales y permisos.")
-    st.stop()
+    st.error(f"❌ Error de conexión con Google Sheets. Verificá tus credenciales y permisos.\n\nDetalles: {e}")
+    gastos_df = pd.DataFrame()
 
-# --- BLOQUE 4: Historial de Gastos ---
-st.subheader("📜 Historial de Gastos")
+# BLOQUE 3: Mostrar imagen de portada
+st.image("https://raw.githubusercontent.com/Nikyr-dev/gasto-amigos-nikyr/main/portada_gasto_justo.png", use_container_width=True)
 
-if df.empty:
-    st.info("Todavía no hay gastos registrados.")
+# BLOQUE 4: Mostrar historial de gastos
+st.title("📋 Historial de Gastos")
+if not gastos_df.empty:
+    st.dataframe(gastos_df)
 else:
-    for idx, row in df.iterrows():
-        participantes = row["participantes"]
-        participantes = participantes.replace("[", "").replace("]", "").replace("'", "")
-        st.markdown(f"- {row['fecha']} | **{row['descripcion']}** | ${row['monto']:.2f} – pagó: *{row['pagador']}* | participantes: {participantes}")
+    st.warning("No hay gastos registrados todavía.")
 
-# --- BLOQUE 5: Análisis de Deudas ---
-st.subheader("💸 Análisis de Deudas")
+# BLOQUE 5: Cálculo de resumen y deudas
+st.title("💸 Resumen Final")
 
-try:
-    # Participantes únicos
-    participantes = set()
+if not gastos_df.empty:
+    participantes = ["Rama", "Nacho", "Marce"]
+    gastos_participantes = {p: 0 for p in participantes}
 
-    for lista in df["participantes"]:
-        if isinstance(lista, str):
-            nombres = lista.replace("[", "").replace("]", "").replace("'", "").split(",")
-            participantes.update([n.strip() for n in nombres])
+    for _, row in gastos_df.iterrows():
+        for participante in participantes:
+            if participante in row['participantes']:
+                gastos_participantes[participante] += row['monto'] / len(row['participantes'])
 
-    participantes = list(participantes)
+    total_gasto = sum(gastos_participantes.values())
+    promedio = total_gasto / len(participantes)
 
-    # Inicializar deuda
-    deuda_individual = {nombre: 0 for nombre in participantes}
+    st.subheader(f"**Total gastado:** ${total_gasto:.2f}")
+    st.subheader(f"**Cada uno debería haber puesto:** ${promedio:.2f}")
 
-    # Calcular gastos individuales
-    for idx, row in df.iterrows():
-        monto = row["monto"]
-        lista_participantes = row["participantes"]
-        lista_participantes = lista_participantes.replace("[", "").replace("]", "").replace("'", "").split(",")
-        lista_participantes = [n.strip() for n in lista_participantes]
-
-        monto_por_persona = monto / len(lista_participantes)
-
-        for p in lista_participantes:
-            deuda_individual[p] += monto_por_persona
-
-    # Cuánto pagó cada uno
-    pagado = df.groupby("pagador")["monto"].sum().to_dict()
-
-    # Mostrar balances
-    for persona in participantes:
-        gasto_teorico = deuda_individual.get(persona, 0)
-        pago_real = pagado.get(persona, 0)
-        balance = pago_real - gasto_teorico
-
-        if balance > 0:
-            st.success(f"✅ {persona} tiene saldo a favor de ${balance:.2f}")
-        elif balance < 0:
-            st.error(f"❌ {persona} debe pagar ${abs(balance):.2f}")
+    for nombre in participantes:
+        diferencia = gastos_participantes[nombre] - promedio
+        if diferencia > 0:
+            st.success(f"✅ {nombre} puso ${diferencia:.2f} de más")
+        elif diferencia < 0:
+            st.warning(f"⚠️ {nombre} debe ${abs(diferencia):.2f}")
         else:
-            st.info(f"⚖️ {persona} está justo, sin saldo ni deuda.")
-
-except Exception as e:
-    st.error("❌ Error procesando las deudas. Verificá que todos los registros estén completos.")
+            st.info(f"🎯 {nombre} está justo")
+else:
+    st.info("Cargá gastos para ver el resumen.")
 
