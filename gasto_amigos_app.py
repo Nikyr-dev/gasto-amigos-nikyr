@@ -5,6 +5,7 @@ import gspread
 from google.oauth2 import service_account
 from PIL import Image
 import os
+import ast
 
 # Configuración de página
 st.set_page_config(page_title="Gasto Justo - By NIKY'R", layout="centered")
@@ -38,6 +39,12 @@ sheet = client.open_by_key(st.secrets["sheet_id"]).sheet1
 @st.cache_data
 def cargar_datos():
     datos = sheet.get_all_records()
+    for row in datos:
+        try:
+            if isinstance(row['participantes'], str):
+                row['participantes'] = ast.literal_eval(row['participantes'])
+        except:
+            row['participantes'] = []
     return pd.DataFrame(datos)
 
 df = cargar_datos()
@@ -85,8 +92,14 @@ if st.session_state.gastos:
 # Calcular balances
 st.header("Balance")
 
+participantes_validos = ["Rama", "Nacho", "Marce"]
+
 def limpiar_nombre(nombre):
-    return nombre.strip().replace('[', '').replace(']', '').replace('"', '').replace("'", '')
+    nombre_limpio = nombre.strip().replace('[', '').replace(']', '').replace('"', '').replace("'", '').replace(',', '')
+    if nombre_limpio in participantes_validos:
+        return nombre_limpio
+    else:
+        return None
 
 total_gastado = 0
 gastos_por_persona = {}
@@ -95,7 +108,11 @@ balance_individual = {}
 for gasto in st.session_state.gastos:
     monto = gasto['monto']
     participantes = [limpiar_nombre(p) for p in gasto['participantes']]
+    participantes = [p for p in participantes if p is not None]
     pagador = limpiar_nombre(gasto['pagador'])
+
+    if pagador is None or len(participantes) == 0:
+        continue
 
     total_gastado += monto
 
@@ -114,7 +131,7 @@ for gasto in st.session_state.gastos:
         balance_individual[pagador] = 0
     balance_individual[pagador] += monto
 
-# Mostrar resumen
+# Mostrar resumen de saldo
 st.subheader("Resumen de gastos y saldos:")
 
 datos_balance = []
@@ -131,29 +148,11 @@ for persona in sorted(set(list(gastos_por_persona.keys()) + list(balance_individ
 df_balance = pd.DataFrame(datos_balance)
 st.dataframe(df_balance)
 
-# Calcular deudas acumuladas entre personas
-st.subheader("Deudas entre personas:")
+# Mostrar resumen en texto simple
+st.subheader("Estado final de deudas:")
 
-deudores = {p: s for p, s in balance_individual.items() if s < 0}
-acreedores = {p: s for p, s in balance_individual.items() if s > 0}
-
-deudas_totales = {}
-
-for deudor, deuda in deudores.items():
-    deuda_restante = -deuda
-    for acreedor, credito in acreedores.items():
-        if credito == 0:
-            continue
-        pago = min(deuda_restante, credito)
-        if pago > 0:
-            clave = (deudor, acreedor)
-            if clave not in deudas_totales:
-                deudas_totales[clave] = 0
-            deudas_totales[clave] += pago
-            deuda_restante -= pago
-            acreedores[acreedor] -= pago
-        if deuda_restante == 0:
-            break
-
-for (deudor, acreedor), monto in deudas_totales.items():
-    st.write(f"👉 {deudor} le debe ${monto:.2f} a {acreedor}")
+for persona, saldo in balance_individual.items():
+    if saldo < 0:
+        st.write(f"👉 {persona} debe ${-saldo:.2f}")
+    elif saldo > 0:
+        st.write(f"✅ {persona} tiene ${saldo:.2f} a favor")
