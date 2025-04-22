@@ -159,12 +159,22 @@ def obtener_acreedor():
 
 acreedor = obtener_acreedor()
 
+if 'saldados' not in st.session_state:
+    st.session_state.saldados = {}
+
 for persona, saldo in balance_individual.items():
     if saldo < 0:
-        if acreedor:
-            st.write(f"👉 {persona} le debe ${-saldo:.2f} a {acreedor}")
-        else:
-            st.write(f"👉 {persona} debe ${-saldo:.2f}")
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            if acreedor:
+                st.write(f"👉 {persona} le debe ${-saldo:.2f} a {acreedor}")
+            else:
+                st.write(f"👉 {persona} debe ${-saldo:.2f}")
+        with col2:
+            marcado = st.checkbox(f"Saldado {persona}", key=f"saldado_{persona}")
+            st.session_state.saldados[persona] = marcado
+            if marcado:
+                st.success(f"✅ {persona} saldó su deuda.")
     elif saldo > 0:
         st.write(f"✅ {persona} tiene ${saldo:.2f} a favor")
 
