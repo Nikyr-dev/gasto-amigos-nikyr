@@ -33,12 +33,13 @@ SECRETS = {
 }
 credentials = service_account.Credentials.from_service_account_info(SECRETS, scopes=SCOPE)
 client = gspread.authorize(credentials)
-sheet = client.open_by_key(st.secrets["sheet_id"]).sheet1
+sheet_gastos = client.open_by_key(st.secrets["sheet_id"]).worksheet("Hoja 1")
+sheet_saldados = client.open_by_key(st.secrets["sheet_id"]).worksheet("saldados")
 
 # Cargar datos existentes
 @st.cache_data
-def cargar_datos():
-    datos = sheet.get_all_records()
+def cargar_datos_gastos():
+    datos = sheet_gastos.get_all_records()
     for row in datos:
         try:
             if isinstance(row['participantes'], str):
@@ -47,18 +48,27 @@ def cargar_datos():
             row['participantes'] = []
     return pd.DataFrame(datos)
 
-df = cargar_datos()
+@st.cache_data
+def cargar_datos_saldados():
+    datos = sheet_saldados.get_all_records()
+    return {row['Persona']: str(row['Estado']).upper() == "TRUE" for row in datos}
 
+# Función para actualizar saldado en la hoja
+def actualizar_estado_saldado(persona, estado):
+    datos_saldados = sheet_saldados.get_all_records()
+    nombres = [row['Persona'] for row in datos_saldados]
+    if persona in nombres:
+        index = nombres.index(persona)
+        sheet_saldados.update_cell(index + 2, 2, "TRUE" if estado else "FALSE")
+    else:
+        sheet_saldados.append_row([persona, "TRUE" if estado else "FALSE"])
+
+# Variables de sesión
 if 'gastos' not in st.session_state:
-    st.session_state.gastos = df.to_dict('records')
+    st.session_state.gastos = cargar_datos_gastos().to_dict('records')
 
 if 'saldados' not in st.session_state:
-    st.session_state.saldados = {}
-    for gasto in st.session_state.gastos:
-        pagador = gasto.get('pagador')
-        saldado = str(gasto.get('saldado')).upper() == "TRUE"
-        if pagador:
-            st.session_state.saldados[pagador] = saldado
+    st.session_state.saldados = cargar_datos_saldados()
 
 # Formulario para registrar nuevo gasto
 st.header("Registrar nuevo gasto")
@@ -72,16 +82,6 @@ with st.form(key='nuevo_gasto'):
 
 if submit_button:
     participantes_lista = [p.strip() for p in participantes.split(',')]
-    nuevo_gasto = {
-        'descripcion': descripcion,
-        'monto': monto,
-        'pagador': pagador,
-        'participantes': participantes_lista,
-        'fecha': fecha.strftime("%d-%b"),
-        'saldado': False
-    }
-    st.session_state.gastos.append(nuevo_gasto)
-
     nueva_fila = [
         fecha.strftime("%d-%b"),
         descripcion,
@@ -90,7 +90,7 @@ if submit_button:
         ", ".join(participantes_lista),
         "FALSE"
     ]
-    sheet.append_row(nueva_fila)
+    sheet_gastos.append_row(nueva_fila)
     st.success("Gasto agregado exitosamente")
     st.experimental_rerun()
 
@@ -159,35 +159,20 @@ for persona in sorted(set(list(gastos_por_persona.keys()) + list(balance_individ
 df_balance = pd.DataFrame(datos_balance)
 st.dataframe(df_balance)
 
-# Mostrar resumen en texto simple
+# Mostrar estado final de deudas
 st.subheader("Estado final de deudas:")
-
-acreedores = {persona: saldo for persona, saldo in balance_individual.items() if saldo > 0}
-
-def obtener_acreedor():
-    return max(acreedores.items(), key=lambda x: x[1])[0] if acreedores else None
-
-acreedor = obtener_acreedor()
 
 for persona, saldo in balance_individual.items():
     if saldo < 0:
         col1, col2 = st.columns([3, 1])
         with col1:
-            if acreedor:
-                st.write(f"👉 {persona} le debe ${-saldo:.2f} a {acreedor}")
-            else:
-                st.write(f"👉 {persona} debe ${-saldo:.2f}")
+            st.write(f"👉 {persona} debe ${-saldo:.2f}")
         with col2:
             estado_actual = st.session_state.saldados.get(persona, False)
             marcado = st.checkbox(f"Saldado {persona}", value=estado_actual, key=f"saldado_{persona}")
             if marcado != estado_actual:
-                # Actualizar en session_state
                 st.session_state.saldados[persona] = marcado
-                # Actualizar en Google Sheets
-                for i, gasto in enumerate(st.session_state.gastos):
-                    if limpiar_nombre(gasto['pagador']) == persona:
-                        sheet.update_cell(i + 2, 6, "TRUE" if marcado else "FALSE")
-                        break
+                actualizar_estado_saldado(persona, marcado)
             if marcado:
                 st.success(f"✅ {persona} saldó su deuda.")
     elif saldo > 0:
@@ -197,8 +182,10 @@ for persona, saldo in balance_individual.items():
 st.subheader("¿Empezar semana nueva?")
 
 if st.button("Reiniciar semana"):
-    sheet.clear()
-    sheet.append_row(["fecha", "detalle", "monto", "pagador", "participantes", "saldado"])
+    sheet_gastos.clear()
+    sheet_gastos.append_row(["fecha", "detalle", "monto", "pagador", "participantes", "saldado"])
+    sheet_saldados.clear()
+    sheet_saldados.append_row(["Persona", "Estado"])
     st.session_state.gastos = []
     st.session_state.saldados = {}
     st.success("✅ Semana reiniciada correctamente.")
