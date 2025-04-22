@@ -28,7 +28,7 @@ SECRETS = {
     "client_id": st.secrets["client_id"],
     "auth_uri": "https://accounts.google.com/o/oauth2/auth",
     "token_uri": "https://oauth2.googleapis.com/token",
-    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    "auth_provider_x509_cert_url": "https://www.googleapis.com/v1/certs",
     "client_x509_cert_url": st.secrets["client_x509_cert_url"]
 }
 credentials = service_account.Credentials.from_service_account_info(SECRETS, scopes=SCOPE)
@@ -52,6 +52,14 @@ df = cargar_datos()
 if 'gastos' not in st.session_state:
     st.session_state.gastos = df.to_dict('records')
 
+if 'saldados' not in st.session_state:
+    st.session_state.saldados = {}
+    for gasto in st.session_state.gastos:
+        pagador = gasto.get('pagador')
+        saldado = str(gasto.get('saldado')).upper() == "TRUE"
+        if pagador:
+            st.session_state.saldados[pagador] = saldado
+
 # Formulario para registrar nuevo gasto
 st.header("Registrar nuevo gasto")
 with st.form(key='nuevo_gasto'):
@@ -69,16 +77,18 @@ if submit_button:
         'monto': monto,
         'pagador': pagador,
         'participantes': participantes_lista,
-        'fecha': fecha.strftime("%d-%b")
+        'fecha': fecha.strftime("%d-%b"),
+        'saldado': False
     }
     st.session_state.gastos.append(nuevo_gasto)
 
     nueva_fila = [
+        fecha.strftime("%d-%b"),
         descripcion,
         monto,
         pagador,
         ", ".join(participantes_lista),
-        fecha.strftime("%d-%b")
+        "FALSE"
     ]
     sheet.append_row(nueva_fila)
     st.success("Gasto agregado exitosamente")
@@ -159,9 +169,6 @@ def obtener_acreedor():
 
 acreedor = obtener_acreedor()
 
-if 'saldados' not in st.session_state:
-    st.session_state.saldados = {}
-
 for persona, saldo in balance_individual.items():
     if saldo < 0:
         col1, col2 = st.columns([3, 1])
@@ -171,8 +178,16 @@ for persona, saldo in balance_individual.items():
             else:
                 st.write(f"👉 {persona} debe ${-saldo:.2f}")
         with col2:
-            marcado = st.checkbox(f"Saldado {persona}", key=f"saldado_{persona}")
-            st.session_state.saldados[persona] = marcado
+            estado_actual = st.session_state.saldados.get(persona, False)
+            marcado = st.checkbox(f"Saldado {persona}", value=estado_actual, key=f"saldado_{persona}")
+            if marcado != estado_actual:
+                # Actualizar en session_state
+                st.session_state.saldados[persona] = marcado
+                # Actualizar en Google Sheets
+                for i, gasto in enumerate(st.session_state.gastos):
+                    if limpiar_nombre(gasto['pagador']) == persona:
+                        sheet.update_cell(i + 2, 6, "TRUE" if marcado else "FALSE")
+                        break
             if marcado:
                 st.success(f"✅ {persona} saldó su deuda.")
     elif saldo > 0:
@@ -183,7 +198,8 @@ st.subheader("¿Empezar semana nueva?")
 
 if st.button("Reiniciar semana"):
     sheet.clear()
-    sheet.append_row(["fecha", "detalle", "monto", "pagador", "participantes"])
+    sheet.append_row(["fecha", "detalle", "monto", "pagador", "participantes", "saldado"])
     st.session_state.gastos = []
+    st.session_state.saldados = {}
     st.success("✅ Semana reiniciada correctamente.")
     st.experimental_rerun()
