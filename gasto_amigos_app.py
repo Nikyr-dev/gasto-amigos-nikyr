@@ -151,8 +151,18 @@ st.dataframe(df_balance)
 # Mostrar resumen en texto simple
 st.subheader("Estado final de deudas:")
 
+acreedores = {persona: saldo for persona, saldo in balance_individual.items() if saldo > 0}
+
+def obtener_acreedor():
+    return max(acreedores.items(), key=lambda x: x[1])[0] if acreedores else None
+
+acreedor = obtener_acreedor()
+
 for persona, saldo in balance_individual.items():
     if saldo < 0:
-        st.write(f"👉 {persona} debe ${-saldo:.2f}")
+        if acreedor:
+            st.write(f"👉 {persona} le debe ${-saldo:.2f} a {acreedor}")
+        else:
+            st.write(f"👉 {persona} debe ${-saldo:.2f}")
     elif saldo > 0:
         st.write(f"✅ {persona} tiene ${saldo:.2f} a favor")
