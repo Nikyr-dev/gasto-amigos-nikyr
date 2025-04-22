@@ -33,7 +33,7 @@ SECRETS = {
 }
 credentials = service_account.Credentials.from_service_account_info(SECRETS, scopes=SCOPE)
 client = gspread.authorize(credentials)
-sheet_gastos = client.open_by_key(st.secrets["sheet_id"]).worksheet("Hoja 1")
+sheet_gastos = client.open_by_key(st.secrets["sheet_id"]).worksheet("Sheet1")
 sheet_saldados = client.open_by_key(st.secrets["sheet_id"]).worksheet("saldados")
 
 # Cargar datos existentes
