@@ -82,6 +82,7 @@ if submit_button:
     ]
     sheet.append_row(nueva_fila)
     st.success("Gasto agregado exitosamente")
+    st.experimental_rerun()
 
 # Mostrar historial de gastos
 st.header("Historial de gastos")
@@ -166,3 +167,13 @@ for persona, saldo in balance_individual.items():
             st.write(f"👉 {persona} debe ${-saldo:.2f}")
     elif saldo > 0:
         st.write(f"✅ {persona} tiene ${saldo:.2f} a favor")
+
+# Botón para reiniciar semana
+st.subheader("¿Empezar semana nueva?")
+
+if st.button("Reiniciar semana"):
+    sheet.clear()
+    sheet.append_row(["fecha", "detalle", "monto", "pagador", "participantes"])
+    st.session_state.gastos = []
+    st.success("✅ Semana reiniciada correctamente.")
+    st.experimental_rerun()
