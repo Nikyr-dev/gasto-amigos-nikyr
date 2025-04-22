@@ -33,7 +33,7 @@ SECRETS = {
 }
 credentials = service_account.Credentials.from_service_account_info(SECRETS, scopes=SCOPE)
 client = gspread.authorize(credentials)
-sheet_gastos = client.open_by_key(st.secrets["sheet_id"]).worksheet("Sheet1")
+sheet_gastos = client.open_by_key(st.secrets["sheet_id"]).worksheet("Hoja 1")
 sheet_saldados = client.open_by_key(st.secrets["sheet_id"]).worksheet("saldados")
 
 # Cargar datos existentes
@@ -48,7 +48,6 @@ def cargar_datos_gastos():
             row['participantes'] = []
     return pd.DataFrame(datos)
 
-@st.cache_data
 def cargar_datos_saldados():
     datos = sheet_saldados.get_all_records()
     return {row['Persona']: str(row['Estado']).upper() == "TRUE" for row in datos}
@@ -66,9 +65,6 @@ def actualizar_estado_saldado(persona, estado):
 # Variables de sesión
 if 'gastos' not in st.session_state:
     st.session_state.gastos = cargar_datos_gastos().to_dict('records')
-
-if 'saldados' not in st.session_state:
-    st.session_state.saldados = cargar_datos_saldados()
 
 # Formulario para registrar nuevo gasto
 st.header("Registrar nuevo gasto")
@@ -139,8 +135,7 @@ for gasto in st.session_state.gastos:
         balance_individual[participante] -= monto_por_participante
 
     if pagador not in balance_individual:
-        balance_individual[pagador] = 0
-    balance_individual[pagador] += monto
+        balance_individual[pagador] += monto
 
 # Mostrar resumen de saldo
 st.subheader("Resumen de gastos y saldos:")
@@ -162,16 +157,18 @@ st.dataframe(df_balance)
 # Mostrar estado final de deudas
 st.subheader("Estado final de deudas:")
 
+# Recargar estados de saldados actualizados cada vez
+saldados_actualizados = cargar_datos_saldados()
+
 for persona, saldo in balance_individual.items():
     if saldo < 0:
         col1, col2 = st.columns([3, 1])
         with col1:
             st.write(f"👉 {persona} debe ${-saldo:.2f}")
         with col2:
-            estado_actual = st.session_state.saldados.get(persona, False)
+            estado_actual = saldados_actualizados.get(persona, False)
             marcado = st.checkbox(f"Saldado {persona}", value=estado_actual, key=f"saldado_{persona}")
             if marcado != estado_actual:
-                st.session_state.saldados[persona] = marcado
                 actualizar_estado_saldado(persona, marcado)
             if marcado:
                 st.success(f"✅ {persona} saldó su deuda.")
@@ -187,6 +184,5 @@ if st.button("Reiniciar semana"):
     sheet_saldados.clear()
     sheet_saldados.append_row(["Persona", "Estado"])
     st.session_state.gastos = []
-    st.session_state.saldados = {}
     st.success("✅ Semana reiniciada correctamente.")
     st.experimental_rerun()
