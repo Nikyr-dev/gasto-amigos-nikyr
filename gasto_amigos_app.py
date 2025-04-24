@@ -118,7 +118,8 @@ balance_individual = {}
 
 for gasto in st.session_state.gastos:
     monto = gasto['monto']
-    participantes = [limpiar_nombre(p) for p in gasto['participantes']]
+    participantes_raw = gasto['participantes'].split(",")
+    participantes = [limpiar_nombre(p) for p in participantes_raw]
     participantes = [p for p in participantes if p is not None]
     pagador = limpiar_nombre(gasto['pagador'])
 
