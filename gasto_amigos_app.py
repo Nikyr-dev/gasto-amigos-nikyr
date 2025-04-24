@@ -107,24 +107,24 @@ balance_individual = {}
 
 if 'gastos' in st.session_state and st.session_state['gastos']:
     for gasto in st.session_state['gastos']:
-    try:
-        monto = float(str(gasto['monto']).replace(',', '').strip())
-    except ValueError:
-        st.warning(f"No se pudo interpretar el monto del gasto: {gasto}")
-        continue
-    participantes = [limpiar_nombre(p) for p in gasto['participantes']]
-    participantes = [p for p in participantes if p]
-    pagador = limpiar_nombre(gasto['pagador'])
+        try:
+            monto = float(str(gasto['monto']).replace(',', '').strip())
+        except ValueError:
+            st.warning(f"No se pudo interpretar el monto del gasto: {gasto}")
+            continue
+        participantes = [limpiar_nombre(p) for p in gasto['participantes']]
+        participantes = [p for p in participantes if p]
+        pagador = limpiar_nombre(gasto['pagador'])
 
-    if pagador is None or not participantes:
-        continue
+        if pagador is None or not participantes:
+            continue
 
-    total_gastado += monto
-    gastos_por_persona[pagador] = gastos_por_persona.get(pagador, 0) + monto
-    monto_por_persona = monto / len(participantes)
-    for p in participantes:
-        balance_individual[p] = balance_individual.get(p, 0) - monto_por_persona
-    balance_individual[pagador] = balance_individual.get(pagador, 0) + monto
+        total_gastado += monto
+        gastos_por_persona[pagador] = gastos_por_persona.get(pagador, 0) + monto
+        monto_por_persona = monto / len(participantes)
+        for p in participantes:
+            balance_individual[p] = balance_individual.get(p, 0) - monto_por_persona
+        balance_individual[pagador] = balance_individual.get(pagador, 0) + monto
 
 st.subheader("Resumen de gastos y saldos")
 df_balance = pd.DataFrame([
