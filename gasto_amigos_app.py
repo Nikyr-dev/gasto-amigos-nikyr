@@ -50,8 +50,8 @@ def cargar_datos_gastos():
         except:
             row['participantes'] = []
         
-    st.write("📋 Datos obtenidos:", datos)
-    st.write("✅ Filas válidas cargadas:", len(datos))
+   # st.write("📋 Datos obtenidos:", datos)
+   # st.write("✅ Filas válidas cargadas:", len(datos))
     return pd.DataFrame(datos)
 
 def cargar_datos_saldados():
