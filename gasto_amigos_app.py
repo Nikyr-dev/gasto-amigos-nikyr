@@ -104,7 +104,11 @@ gastos_por_persona = {}
 balance_individual = {}
 
 for gasto in st.session_state.gastos:
-    monto = float(gasto['monto'])
+    try:
+        monto = float(str(gasto['monto']).replace(',', '').strip())
+    except ValueError:
+        st.warning(f"No se pudo interpretar el monto del gasto: {gasto}")
+        continue
     participantes = [limpiar_nombre(p) for p in gasto['participantes']]
     participantes = [p for p in participantes if p]
     pagador = limpiar_nombre(gasto['pagador'])
