@@ -62,12 +62,20 @@ def actualizar_estado_saldado(persona, estado):
 
 participantes_validos = ["Rama", "Nacho", "Marce"]
 
-# Bloque de debug directo
-st.write("🔍 Datos crudos desde Google Sheets:")
-st.dataframe(cargar_datos_gastos())
-
-# Cargar gastos en session_state
-st.session_state['gastos'] = cargar_datos_gastos().to_dict('records')
+# VALIDACIÓN DE CARGA
+try:
+    df = cargar_datos_gastos()
+    st.write("📋 Columnas detectadas:", df.columns)
+    st.write("🔍 Vista previa de datos:", df.head())
+    columnas_esperadas = ['fecha', 'detalle', 'monto', 'pagador', 'participantes', 'saldado']
+    if not df.empty and all(col in df.columns for col in columnas_esperadas):
+        st.session_state['gastos'] = df.to_dict('records')
+    else:
+        st.warning("⚠️ Las columnas no están bien formateadas o el DataFrame está vacío.")
+        st.session_state['gastos'] = []
+except Exception as e:
+    st.error(f"❌ Error cargando datos desde Google Sheets: {e}")
+    st.session_state['gastos'] = []
 
 st.header("Registrar nuevo gasto")
 with st.form(key='nuevo_gasto'):
