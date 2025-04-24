@@ -91,7 +91,7 @@ if submit_button:
 
 st.header("Historial de gastos")
 if 'gastos' in st.session_state and st.session_state['gastos']:
-    gastos_df = pd.DataFrame(st.session_state.gastos)
+    gastos_df = pd.DataFrame(st.session_state['gastos'])
     st.dataframe(gastos_df)
 
 st.header("Balance")
@@ -104,7 +104,7 @@ total_gastado = 0
 gastos_por_persona = {}
 balance_individual = {}
 
-for gasto in st.session_state.gastos:
+for gasto in st.session_state['gastos']:
     try:
         monto = float(str(gasto['monto']).replace(',', '').strip())
     except ValueError:
@@ -164,4 +164,3 @@ if st.button("Reiniciar semana"):
     cargar_datos_gastos.clear()
     st.success("✅ Semana reiniciada correctamente.")
     st.rerun()
-3
