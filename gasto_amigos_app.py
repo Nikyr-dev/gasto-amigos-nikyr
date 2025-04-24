@@ -64,7 +64,8 @@ def actualizar_estado_saldado(persona, estado):
         sheet_saldados.append_row([persona, "TRUE" if estado else "FALSE"])
 
 participantes_validos = ["Rama", "Nacho", "Marce"]
-st.session_state['gastos'] = cargar_datos_gastos().to_dict('records')
+if 'gastos' not in st.session_state:
+    st.session_state['gastos'] = cargar_datos_gastos().to_dict('records')
 
 st.header("Registrar nuevo gasto")
 with st.form(key='nuevo_gasto'):
@@ -104,7 +105,8 @@ total_gastado = 0
 gastos_por_persona = {}
 balance_individual = {}
 
-for gasto in st.session_state['gastos']:
+if 'gastos' in st.session_state and st.session_state['gastos']:
+    for gasto in st.session_state['gastos']:
     try:
         monto = float(str(gasto['monto']).replace(',', '').strip())
     except ValueError:
@@ -160,7 +162,7 @@ if st.button("Reiniciar semana"):
     sheet_gastos.append_row(["fecha", "detalle", "monto", "pagador", "participantes", "saldado"])
     sheet_saldados.clear()
     sheet_saldados.append_row(["Persona", "Estado"])
-    st.session_state.gastos = []
+    st.session_state['gastos'] = []
     cargar_datos_gastos.clear()
     st.success("✅ Semana reiniciada correctamente.")
     st.rerun()
