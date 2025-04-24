@@ -67,6 +67,9 @@ def actualizar_estado_saldado(persona, estado):
     else:
         sheet_saldados.append_row([persona, "TRUE" if estado else "FALSE"])
 
+# Inicializar participantes y pagadores válidos para autocompletar
+participantes_validos = ["Rama", "Nacho", "Marce"]
+
 # Variables de sesión
 if 'gastos' not in st.session_state:
     st.session_state.gastos = cargar_datos_gastos().to_dict('records')
@@ -76,19 +79,18 @@ st.header("Registrar nuevo gasto")
 with st.form(key='nuevo_gasto'):
     descripcion = st.text_input("Descripción")
     monto = st.number_input("Monto", min_value=0.0, format="%.2f")
-    pagador = st.text_input("Pagador")
-    participantes = st.text_input("Participantes (separados por coma)")
+    pagador = st.selectbox("Pagador", participantes_validos)
+    participantes = st.multiselect("Participantes", participantes_validos, default=participantes_validos)
     fecha = st.date_input("Fecha", value=datetime.date.today())
     submit_button = st.form_submit_button(label='Agregar gasto')
 
 if submit_button:
-    participantes_lista = [p.strip() for p in participantes.split(',')]
     nueva_fila = [
         fecha.strftime("%d-%b"),
         descripcion,
         monto,
         pagador,
-        ", ".join(participantes_lista),
+        str(participantes),
         "FALSE"
     ]
     sheet_gastos.append_row(nueva_fila)
@@ -103,8 +105,6 @@ if st.session_state.gastos:
 
 # Calcular balances
 st.header("Balance")
-
-participantes_validos = ["Rama", "Nacho", "Marce"]
 
 def limpiar_nombre(nombre):
     nombre_limpio = nombre.strip().replace('[', '').replace(']', '').replace('"', '').replace("'", '').replace(',', '')
