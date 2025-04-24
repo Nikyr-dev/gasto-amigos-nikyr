@@ -86,7 +86,7 @@ if submit_button:
         descripcion,
         monto,
         pagador,
-        str(participantes),
+        ", ".join(participantes),
         "FALSE"
     ]
     sheet_gastos.append_row(nueva_fila)
