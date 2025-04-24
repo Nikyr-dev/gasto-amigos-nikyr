@@ -41,6 +41,7 @@ if sheet_saldados.row_count < 1 or sheet_saldados.cell(1, 1).value != "Persona":
 
 @st.cache_data
 def cargar_datos_gastos():
+    st.write("🔍 Leyendo datos desde Google Sheets...")
     datos = sheet_gastos.get_all_records()
     for row in datos:
         try:
@@ -48,6 +49,7 @@ def cargar_datos_gastos():
                 row['participantes'] = [p.strip() for p in row['participantes'].split(',') if p.strip()]
         except:
             row['participantes'] = []
+        st.write("📋 Datos obtenidos:", datos)
     return pd.DataFrame(datos)
 
 def cargar_datos_saldados():
