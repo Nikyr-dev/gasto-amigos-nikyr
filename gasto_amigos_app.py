@@ -64,7 +64,7 @@ def actualizar_estado_saldado(persona, estado):
         sheet_saldados.append_row([persona, "TRUE" if estado else "FALSE"])
 
 participantes_validos = ["Rama", "Nacho", "Marce"]
-st.session_state.gastos = cargar_datos_gastos().to_dict('records')
+st.session_state['gastos'] = cargar_datos_gastos().to_dict('records')
 
 st.header("Registrar nuevo gasto")
 with st.form(key='nuevo_gasto'):
@@ -86,6 +86,7 @@ if submit_button:
     ]
     sheet_gastos.append_row(nueva_fila)
     st.success("Gasto agregado exitosamente")
+    st.session_state['gastos'] = cargar_datos_gastos().to_dict('records')
     st.rerun()
 
 st.header("Historial de gastos")
