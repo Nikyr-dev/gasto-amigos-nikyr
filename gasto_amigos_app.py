@@ -6,14 +6,17 @@ from google.oauth2 import service_account
 from PIL import Image
 import os
 
+# Configuración de página
 st.set_page_config(page_title="Gasto Justo - By NIKY'R", layout="centered")
 
+# Cargar imagen de encabezado
 if os.path.exists('encabezado_gasto_justo.png'):
     imagen = Image.open('encabezado_gasto_justo.png')
     st.image(imagen, use_container_width=True)
 else:
     st.warning("No se encontró la imagen de encabezado.")
 
+# Conexión a Google Sheets
 SCOPE = ["https://www.googleapis.com/auth/spreadsheets"]
 SECRETS = {
     "type": "service_account",
@@ -32,10 +35,12 @@ client = gspread.authorize(credentials)
 sheet_gastos = client.open_by_key(st.secrets["sheet_id"]).worksheet("Hoja 1")
 sheet_saldados = client.open_by_key(st.secrets["sheet_id"]).worksheet("saldados")
 
+# Asegurar encabezados
 if sheet_saldados.row_count < 1 or sheet_saldados.cell(1, 1).value != "Persona":
     sheet_saldados.clear()
     sheet_saldados.append_row(["Persona", "Estado"])
 
+# Cargar datos existentes
 @st.cache_data
 def cargar_datos_gastos():
     datos = sheet_gastos.get_all_records()
@@ -60,9 +65,10 @@ def actualizar_estado_saldado(persona, estado):
     else:
         sheet_saldados.append_row([persona, "TRUE" if estado else "FALSE"])
 
+# Lista fija de participantes
 participantes_validos = ["Rama", "Nacho", "Marce"]
-st.session_state['gastos'] = cargar_datos_gastos().to_dict('records')
 
+# Formulario
 st.header("Registrar nuevo gasto")
 with st.form(key='nuevo_gasto'):
     descripcion = st.text_input("Descripción")
@@ -83,45 +89,48 @@ if submit_button:
     ]
     sheet_gastos.append_row(nueva_fila)
     st.success("Gasto agregado exitosamente")
-    st.session_state['gastos'] = cargar_datos_gastos().to_dict('records')
     st.rerun()
 
+# Cargar gastos actualizados
+st.session_state.gastos = cargar_datos_gastos().to_dict('records')
+
+# Mostrar historial
 st.header("Historial de gastos")
-if 'gastos' in st.session_state and st.session_state['gastos']:
-    gastos_df = pd.DataFrame(st.session_state['gastos'])
+if st.session_state.gastos:
+    gastos_df = pd.DataFrame(st.session_state.gastos)
     st.dataframe(gastos_df)
 
+# Balance
 st.header("Balance")
 
 def limpiar_nombre(nombre):
     nombre_limpio = nombre.strip()
-    return nombre_limpio if nombre_limpio in participantes_validos else None
+    if nombre_limpio in participantes_validos:
+        return nombre_limpio
+    return None
 
 total_gastado = 0
 gastos_por_persona = {}
 balance_individual = {}
 
-if 'gastos' in st.session_state and st.session_state['gastos']:
-    for gasto in st.session_state['gastos']:
-        try:
-            monto = float(str(gasto['monto']).replace(',', '').strip())
-        except ValueError:
-            st.warning(f"No se pudo interpretar el monto del gasto: {gasto}")
-            continue
-        participantes = [limpiar_nombre(p) for p in gasto['participantes']]
-        participantes = [p for p in participantes if p]
-        pagador = limpiar_nombre(gasto['pagador'])
+for gasto in st.session_state.gastos:
+    monto = gasto['monto']
+    participantes = [limpiar_nombre(p) for p in gasto['participantes']]
+    participantes = [p for p in participantes if p]
+    pagador = limpiar_nombre(gasto['pagador'])
 
-        if pagador is None or not participantes:
-            continue
+    if pagador is None or len(participantes) == 0:
+        continue
 
-        total_gastado += monto
-        gastos_por_persona[pagador] = gastos_por_persona.get(pagador, 0) + monto
-        monto_por_persona = monto / len(participantes)
-        for p in participantes:
-            balance_individual[p] = balance_individual.get(p, 0) - monto_por_persona
-        balance_individual[pagador] = balance_individual.get(pagador, 0) + monto
+    total_gastado += monto
+    gastos_por_persona[pagador] = gastos_por_persona.get(pagador, 0) + monto
 
+    monto_por_persona = monto / len(participantes)
+    for p in participantes:
+        balance_individual[p] = balance_individual.get(p, 0) - monto_por_persona
+    balance_individual[pagador] = balance_individual.get(pagador, 0) + monto
+
+# Mostrar balances
 st.subheader("Resumen de gastos y saldos")
 df_balance = pd.DataFrame([
     {
@@ -134,6 +143,7 @@ df_balance = pd.DataFrame([
 ])
 st.dataframe(df_balance)
 
+# Estado de deudas
 st.subheader("Estado final de deudas")
 saldados_actualizados = cargar_datos_saldados()
 
@@ -152,14 +162,14 @@ for persona, saldo in balance_individual.items():
     elif saldo > 0:
         st.write(f"✅ {persona} tiene ${saldo:.2f} a favor")
 
+# Reiniciar semana
 st.subheader("¿Empezar semana nueva?")
 if st.button("Reiniciar semana"):
     sheet_gastos.clear()
     sheet_gastos.append_row(["fecha", "detalle", "monto", "pagador", "participantes", "saldado"])
     sheet_saldados.clear()
     sheet_saldados.append_row(["Persona", "Estado"])
-    st.session_state['gastos'] = []
-    cargar_datos_gastos.clear()
-    st.session_state['gastos'] = cargar_datos_gastos().to_dict('records')
+    st.session_state.gastos = []
+    cargar_datos_gastos.clear()  # <- limpia el cache para que no se muestre el historial viejo
     st.success("✅ Semana reiniciada correctamente.")
     st.rerun()
