@@ -6,17 +6,14 @@ from google.oauth2 import service_account
 from PIL import Image
 import os
 
-# Configuración de página
 st.set_page_config(page_title="Gasto Justo - By NIKY'R", layout="centered")
 
-# Cargar imagen de encabezado
 if os.path.exists('encabezado_gasto_justo.png'):
     imagen = Image.open('encabezado_gasto_justo.png')
     st.image(imagen, use_container_width=True)
 else:
     st.warning("No se encontró la imagen de encabezado.")
 
-# Conexión a Google Sheets
 SCOPE = ["https://www.googleapis.com/auth/spreadsheets"]
 SECRETS = {
     "type": "service_account",
@@ -157,18 +154,12 @@ for persona, saldo in balance_individual.items():
 
 st.subheader("¿Empezar semana nueva?")
 if st.button("Reiniciar semana"):
-    pendientes = cargar_datos_saldados()
-    pendientes_no_saldados = {k: v for k, v in pendientes.items() if not v}
-
     sheet_gastos.clear()
     sheet_gastos.append_row(["fecha", "detalle", "monto", "pagador", "participantes", "saldado"])
     sheet_saldados.clear()
     sheet_saldados.append_row(["Persona", "Estado"])
-    for persona in pendientes_no_saldados:
-        sheet_saldados.append_row([persona, "FALSE"])
-
     st.session_state['gastos'] = []
     cargar_datos_gastos.clear()
     st.session_state['gastos'] = cargar_datos_gastos().to_dict('records')
-    st.success("✅ Semana reiniciada correctamente. Deudas pendientes conservadas.")
+    st.success("✅ Semana reiniciada correctamente.")
     st.rerun()
