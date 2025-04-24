@@ -48,7 +48,7 @@ def cargar_datos_gastos():
     for row in datos:
         try:
             if isinstance(row['participantes'], str):
-                row['participantes'] = ast.literal_eval(row['participantes'])
+        row['participantes'] = [p.strip() for p in row['participantes'].split(',') if p.strip()]
         except:
             row['participantes'] = []
     return pd.DataFrame(datos)
