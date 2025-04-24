@@ -162,20 +162,11 @@ for persona, saldo in balance_individual.items():
 
 st.subheader("¿Empezar semana nueva?")
 if st.button("Reiniciar semana"):
-    # Guardar estados no saldados antes de limpiar
-    pendientes = cargar_datos_saldados()
-    pendientes_no_saldados = {k: v for k, v in pendientes.items() if not v}
-
     sheet_gastos.clear()
     sheet_gastos.append_row(["fecha", "detalle", "monto", "pagador", "participantes", "saldado"])
     sheet_saldados.clear()
     sheet_saldados.append_row(["Persona", "Estado"])
-
-    # Restaurar no saldados
-    for persona in pendientes_no_saldados:
-        sheet_saldados.append_row([persona, "FALSE"])
-
     st.session_state['gastos'] = []
     cargar_datos_gastos.clear()
-    st.success("✅ Semana reiniciada correctamente. Deudas pendientes conservadas.")
+    st.success("✅ Semana reiniciada correctamente.")
     st.rerun()
