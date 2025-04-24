@@ -104,7 +104,7 @@ gastos_por_persona = {}
 balance_individual = {}
 
 for gasto in st.session_state.gastos:
-    monto = gasto['monto']
+    monto = float(gasto['monto'])
     participantes = [limpiar_nombre(p) for p in gasto['participantes']]
     participantes = [p for p in participantes if p]
     pagador = limpiar_nombre(gasto['pagador'])
