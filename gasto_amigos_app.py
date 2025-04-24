@@ -41,7 +41,7 @@ if sheet_saldados.row_count < 1 or sheet_saldados.cell(1, 1).value != "Persona":
 
 @st.cache_data
 def cargar_datos_gastos():
-    st.write("🔍 Leyendo datos desde Google Sheets...")
+    
     datos = sheet_gastos.get_all_records()
     for row in datos:
         try:
@@ -50,8 +50,8 @@ def cargar_datos_gastos():
         except:
             row['participantes'] = []
         
-    st.write("📋 Datos obtenidos:", datos)
-    st.write("✅ Filas válidas cargadas:", len(datos))
+    
+    
     return pd.DataFrame(datos)
 
 def cargar_datos_saldados():
@@ -68,8 +68,7 @@ def actualizar_estado_saldado(persona, estado):
         sheet_saldados.append_row([persona, "TRUE" if estado else "FALSE"])
 
 participantes_validos = ["Rama", "Nacho", "Marce"]
-if 'gastos' not in st.session_state:
-    st.session_state['gastos'] = cargar_datos_gastos().to_dict('records')
+st.session_state['gastos'] = cargar_datos_gastos().to_dict('records')
 
 st.header("Registrar nuevo gasto")
 with st.form(key='nuevo_gasto'):
@@ -162,11 +161,20 @@ for persona, saldo in balance_individual.items():
 
 st.subheader("¿Empezar semana nueva?")
 if st.button("Reiniciar semana"):
+    # Guardar estados no saldados antes de limpiar
+    pendientes = cargar_datos_saldados()
+    pendientes_no_saldados = {k: v for k, v in pendientes.items() if not v}
+
     sheet_gastos.clear()
     sheet_gastos.append_row(["fecha", "detalle", "monto", "pagador", "participantes", "saldado"])
     sheet_saldados.clear()
     sheet_saldados.append_row(["Persona", "Estado"])
+
+    # Restaurar no saldados
+    for persona in pendientes_no_saldados:
+        sheet_saldados.append_row([persona, "FALSE"])
+
     st.session_state['gastos'] = []
     cargar_datos_gastos.clear()
-    st.success("✅ Semana reiniciada correctamente.")
+    st.success("✅ Semana reiniciada correctamente. Deudas pendientes conservadas.")
     st.rerun()
