@@ -70,10 +70,6 @@ def actualizar_estado_saldado(persona, estado):
 # Inicializar participantes y pagadores válidos para autocompletar
 participantes_validos = ["Rama", "Nacho", "Marce"]
 
-# Variables de sesión
-if 'gastos' not in st.session_state:
-    st.session_state.gastos = cargar_datos_gastos().to_dict('records')
-
 # Formulario para registrar nuevo gasto
 st.header("Registrar nuevo gasto")
 with st.form(key='nuevo_gasto'):
@@ -96,6 +92,9 @@ if submit_button:
     sheet_gastos.append_row(nueva_fila)
     st.success("Gasto agregado exitosamente")
     st.rerun()
+
+# Cargar siempre los datos actualizados de gastos
+st.session_state.gastos = cargar_datos_gastos().to_dict('records')
 
 # Mostrar historial de gastos
 st.header("Historial de gastos")
