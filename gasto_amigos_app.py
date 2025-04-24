@@ -170,5 +170,6 @@ if st.button("Reiniciar semana"):
     sheet_saldados.clear()
     sheet_saldados.append_row(["Persona", "Estado"])
     st.session_state.gastos = []
+    cargar_datos_gastos.clear()  # <- limpia el cache para que no se muestre el historial viejo
     st.success("✅ Semana reiniciada correctamente.")
     st.rerun()
