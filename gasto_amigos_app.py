@@ -90,7 +90,7 @@ if submit_button:
     st.rerun()
 
 st.header("Historial de gastos")
-if st.session_state.gastos:
+if 'gastos' in st.session_state and st.session_state['gastos']:
     gastos_df = pd.DataFrame(st.session_state.gastos)
     st.dataframe(gastos_df)
 
@@ -164,3 +164,4 @@ if st.button("Reiniciar semana"):
     cargar_datos_gastos.clear()
     st.success("✅ Semana reiniciada correctamente.")
     st.rerun()
+3
