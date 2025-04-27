@@ -35,7 +35,6 @@ if sheet_saldados.row_count < 1 or sheet_saldados.cell(1, 1).value != "Persona":
     sheet_saldados.clear()
     sheet_saldados.append_row(["Persona", "Estado"])
 
-@st.cache_data
 def cargar_datos_gastos():
     datos = sheet_gastos.get_all_records()
     filas_validas = []
