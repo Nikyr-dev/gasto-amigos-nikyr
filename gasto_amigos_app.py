@@ -103,14 +103,13 @@ if 'gastos' in st.session_state and st.session_state['gastos']:
     gastos_df = pd.DataFrame(st.session_state['gastos'])
     st.dataframe(gastos_df)
 
-# Nuevo BALANCE y DEUDAS
+# Nuevo BALANCE Y DEUDAS CORREGIDO
 st.header("Balance y deudas")
 
 def limpiar_nombre(nombre):
     nombre_limpio = nombre.strip()
     return nombre_limpio if nombre_limpio in participantes_validos else None
 
-# Inicializar contadores
 total_pagado = {}
 total_deberia_pagar = {}
 
@@ -141,7 +140,6 @@ for persona in participantes_validos:
     saldo = pagado - deberia
     saldos_finales[persona] = saldo
 
-# Mostrar resumen
 st.subheader("Resumen de gastos y saldos")
 df_balance = pd.DataFrame([
     {"Persona": persona, "Gastó en total": round(total_pagado.get(persona, 0), 2), "Debe pagar": round(total_deberia_pagar.get(persona, 0), 2), "Saldo final": round(saldo, 2), "Situación": ("A favor" if saldo > 0 else "Debe")}
@@ -149,7 +147,6 @@ df_balance = pd.DataFrame([
 ])
 st.dataframe(df_balance)
 
-# Estado de deudas
 st.subheader("Estado final de deudas")
 saldados_actualizados = cargar_datos_saldados()
 for persona, saldo in saldos_finales.items():
@@ -167,7 +164,6 @@ for persona, saldo in saldos_finales.items():
     elif saldo > 0:
         st.write(f"✅ {persona} tiene ${saldo:.2f} a favor")
 
-# Botón de reinicio
 if st.button("Reiniciar semana"):
     sheet_gastos.clear()
     sheet_gastos.append_row(["fecha", "detalle", "monto", "pagador", "participantes", "saldado"])
